@@ -1,6 +1,4 @@
-#Programming Assignment 1
-
-UDP Socket Programming
+#Programming Assignment 1: UDP Socket Programming
 
 due Friday, September 6th by 11:55 pm
 
@@ -22,13 +20,15 @@ In this assignment, you will build two programs in C, one for the client which w
 
 2.  It should prompt the user to type any of the following commands
 
-  *   get [file_name]
+  A.  get [file_name]
 
-  *   put [file_name]
+  B.  put [file_name]
+    
+  C.  ls
 
-  *   ls
-
-  *   exit3.  It must then send the command to the server.
+  D.  exit
+  
+  E.  It must then send the command to the server.
 
 4.  Then it must wait for the server's response. Once the server responds, it should print appropriate messages, if any, on the standard output.
 
@@ -40,15 +40,15 @@ In this assignment, you will build two programs in C, one for the client which w
 
 3.  Depending on the commands received, the server responds to the client's request in the following manner :
 
-*   *   “get [file_name]”: The server transmits the requested file to the client (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
+	A.   “get [file_name]”: The server transmits the requested file to the client (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
 
-        *   “put [file_name]”: The server receives the transmitted file by the client and stores it locally (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
+	B.   “put [file_name]”: The server receives the transmitted file by the client and stores it locally (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
 
-*   *   “ls”: The server should search all the files it has in its local directory and send a list of all these files to the client.
+	C.   “ls”: The server should search all the files it has in its local directory and send a list of all these files to the client.
 
-        *   “exit” : The server should exit gracefully.
+	D.   “exit” : The server should exit gracefully.
 
-        *   For any other commands, the server should simply repeat the command back to the client with no modification, stating that the given command was not understood.
+	E.   For any other commands, the server should simply repeat the command back to the client with no modification, stating that the given command was not understood.
 
 Notes:
 
