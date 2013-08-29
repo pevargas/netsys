@@ -5,9 +5,7 @@ due Friday, September 6th by 11:55 pm
 **The purpose of this assignment:**
 
 1.  An appropriate understanding of C language.
-
 2.  An understanding of tools (compilers in Linux, shell,etc).
-
 3.  Introduction to the socket programming interface.
 
 In this assignment, you will build two programs in C, one for the client which will simply send a command and the other for a server which will send a suitable response back to the client.
@@ -17,43 +15,28 @@ In this assignment, you will build two programs in C, one for the client which w
 **The client:**
 
 1.  The client must take two command line arguments: an IP address of the machine on which the server application is running, and the port the server application is using. [The IP address can be obtained using hostname -i . Type man hostname at the shell prompt for more information on how to use the hostname command.]
-
 2.  It should prompt the user to type any of the following commands
-
   A.  get [file_name]
-
   B.  put [file_name]
-    
   C.  ls
-
   D.  exit
-  
   E.  It must then send the command to the server.
-
 4.  Then it must wait for the server's response. Once the server responds, it should print appropriate messages, if any, on the standard output.
 
 **The server:**
 
 1.  The server must take one command line argument: a port number for the server to use. You should select port #'s &gt; 5000.
-
 2.  It should wait for a UDP connection.
-
 3.  Depending on the commands received, the server responds to the client's request in the following manner :
-
-	A.   “get [file_name]”: The server transmits the requested file to the client (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
-
-	B.   “put [file_name]”: The server receives the transmitted file by the client and stores it locally (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
-
-	C.   “ls”: The server should search all the files it has in its local directory and send a list of all these files to the client.
-
-	D.   “exit” : The server should exit gracefully.
-
-	E.   For any other commands, the server should simply repeat the command back to the client with no modification, stating that the given command was not understood.
+  A.   “get [file_name]”: The server transmits the requested file to the client (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
+  B.   “put [file_name]”: The server receives the transmitted file by the client and stores it locally (use files of small size in order of 2 to 5 KB for transfer like any jpeg file).
+  C.   “ls”: The server should search all the files it has in its local directory and send a list of all these files to the client.
+  D.   “exit” : The server should exit gracefully.
+  E.   For any other commands, the server should simply repeat the command back to the client with no modification, stating that the given command was not understood.
 
 Notes:
 
 *   Both the client and the server should be in a loop. For the purpose of this assignment, the client can be terminated by typing Ctrl-C.
-
 *   The client side should contain at least three files with their names hard-coded as foo1, foo2, and foo3.
 
 ![Programming Assignment 1 - Figure 1: Client-Server Communication](PA1_Figure1.jpg)
@@ -62,12 +45,9 @@ Notes:
 
 You should test your programs thoroughly so that they do not crash or hang. Your code must be organized and clear with comments/explanations for your functions and arguments. &nbsp;Please turn in one tar file containing two .c source files one readme.txt file and one Makefile. The Makefile must compile both client.c and server.c into their respective executables. &nbsp;The readme.txt file must explain what you have done and how to run it. The documentation does not have to be long, but does have to be very clear. &nbsp;&nbsp;The code that you turn in for this programming assignment must be your own original work and must compile and run on the CSEL machines. Upload the tar file containing the following files via the moodle.
 
-*   Client file named “**client.c**”
-
-*   Server file named “**server.c**”
-
-*   **makefile** – compiles “client.c” and “server.c” into “client” and “server” executables.
-
+*   Client file named **client.c**
+*   Server file named **server.c**
+*   **makefile** – compiles "client.c" and "server.c" into "client" and "server" executables.
 *   **README.txt** file
 
 ##Getting Started
@@ -93,11 +73,8 @@ The IP address is the server's IP address. The port number is the server's port 
 Examine the code in the provided programs. The list of header files that need to be introduced in the socket programming are listed below.
 
 *   sys/socket.h : The header file socket.h includes a number of definitions of structures needed for sockets.
-
 *   netinet/in.h : The header file in.h contains constants and structures needed for internet domain addresses.
-
 *   arpa/inet.h : The header file contains definitions for internet operations.
-
 *   netdb.h : This header file contains definitions for network database operations.
 
 ###Functions:
@@ -105,11 +82,8 @@ Examine the code in the provided programs. The list of header files that need to
 A brief explanation of some of the functions used in the code is provided here. However, for in depth understanding of the functions, please read the manpages of the functions.
 
 *   socket() : The input parameters of the function lets you determine which type of socket you want in your application. It may be a TCP or UDP socket. The function returns a socket descriptor which can prove helpful later system calls or -1 on error. A quick look at the function:
-
 *   bind() : Once we have our socket ready, we have to associate it with a port number on the local machine. It will return -1 on error. When calling bind function, it should be noted that ports below 1024 are reserved. Any port number above 1024 and less than 65535 can be used. A quick reference:
-
 *   sendto(): This function is used to send the data. Since it is used in unconnected datagrams, the input paramater of this function includes the destination address.It returns the number of bytes sent on success and -1 on error.
-
 *   recvfrom() : This function is used to receive the data from an unconnected datagram socket. The input paramters contain the address of the originating machine. It returns the number of bytes received on success and -1 on error
 
 Note: It will be beneficial if you read the Beej’s Socket Programming guide (provided as a reference in this assignment) before starting the actual assignment.
@@ -139,11 +113,8 @@ Your code must compile and execute on the machines in the CSEL Linux cluster. To
 For the Host Name (aka server) use one of the following (elra == educational labs remote access):
 
 *   elra-01.cs.colorado.edu
-
 *   elra-02.cs.colorado.edu
-
 *   elra-03.cs.colorado.edu
-
 *   elra-04.cs.colorado.edu
 
 **External References:**
