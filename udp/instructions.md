@@ -1,8 +1,8 @@
-**Programming Assignment 1**
+#Programming Assignment 1
 
-**UDP Socket Programming**
+UDP Socket Programming
 
-**due Friday, September 6th by 11:55 pm**
+due Friday, September 6th by 11:55 pm
 
 **The purpose of this assignment:**
 
@@ -14,7 +14,7 @@
 
 In this assignment, you will build two programs in C, one for the client which will simply send a command and the other for a server which will send a suitable response back to the client.
 
-**Program Requirements**
+##Program Requirements
 
 **The client:**
 
@@ -22,13 +22,13 @@ In this assignment, you will build two programs in C, one for the client which w
 
 2.  It should prompt the user to type any of the following commands
 
-*   get [file_name]
+  *   get [file_name]
 
-*   put [file_name]
+  *   put [file_name]
 
-*   ls
+  *   ls
 
-*   exit3.  It must then send the command to the server.
+  *   exit3.  It must then send the command to the server.
 
 4.  Then it must wait for the server's response. Once the server responds, it should print appropriate messages, if any, on the standard output.
 
@@ -58,7 +58,7 @@ Notes:
 
 ![Programming Assignment 1 - Figure 1: Client-Server Communication](PA1_Figure1.jpg)
 
-**What To Turn In:**
+##What To Turn In:
 
 You should test your programs thoroughly so that they do not crash or hang. Your code must be organized and clear with comments/explanations for your functions and arguments. &nbsp;Please turn in one tar file containing two .c source files one readme.txt file and one Makefile. The Makefile must compile both client.c and server.c into their respective executables. &nbsp;The readme.txt file must explain what you have done and how to run it. The documentation does not have to be long, but does have to be very clear. &nbsp;&nbsp;The code that you turn in for this programming assignment must be your own original work and must compile and run on the CSEL machines. Upload the tar file containing the following files via the moodle.
 
@@ -70,7 +70,7 @@ You should test your programs thoroughly so that they do not crash or hang. Your
 
 *   **README.txt** file
 
-**Getting Started:**
+##Getting Started
 
 (Please read as this may answer some of your questions)
 
@@ -88,7 +88,7 @@ To run the programs after compiling:
 
 The IP address is the server's IP address. The port number is the server's port number. You are informing the client where the server is located. You can test your application locally by running both the client and the server on the same machine. In this case, you can type localhost in place of the IP address. &nbsp;Feel free to use these files as a baseline for your design. You will have to modify parts of the code, especially for the server where parsing of the message is required.
 
-**Header Files:**
+###Header Files:
 
 Examine the code in the provided programs. The list of header files that need to be introduced in the socket programming are listed below.
 
@@ -100,7 +100,7 @@ Examine the code in the provided programs. The list of header files that need to
 
 *   netdb.h : This header file contains definitions for network database operations.
 
-**Functions:**
+###Functions:
 
 A brief explanation of some of the functions used in the code is provided here. However, for in depth understanding of the functions, please read the manpages of the functions.
 
@@ -120,7 +120,7 @@ Also, on the client side, it may be beneficial for you to configure a non-blocki
 
 fcntl(sockfd, F_SETFL, O_NONBLOCK). Do a man for fcntl for more information. It will be easier to use a default blocking socket on the server side.
 
-**HOW TO:**
+##HOW TO:
 
 **Using Man Pages**
 
