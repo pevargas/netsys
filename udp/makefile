@@ -1,14 +1,16 @@
-# File:   makefile				Fall 2013
-# Author: Patrick Vargas			patrick.vargas@colorado.edu
+#------------------------------------------------------------------------------#
+# File:   makefile				        Fall 2013
+# Author: Patrick Vargas			    patrick.vargas@colorado.edu
+# University of Colorado Boulder        CSCI 4273: Network Systems
 # Description:
 #   Compiles the programs found in udp_client.c and udp_server.c
+#------------------------------------------------------------------------------#
 
-# Declaration of Variables
+#------------------------------------------------------------------------------#
 CC = gcc
 FLAGS = -Wall -O2 
 
 all: client server
-	@echo // Done Building $^
 
 client: 
 	$(CC) $(FLAGS) udp_client.c -o $@
@@ -22,3 +24,4 @@ clean:
 # Obligatory unix joke
 love:
 	@echo not war?
+#------------------------------------------------------------------------------#

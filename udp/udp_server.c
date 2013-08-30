@@ -1,6 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-// File:
+// File: udp_server.c                   Fall 2013
 // Student: Patrick Vargas              patrick.vargas@colorado.edu
+// University of Colorado Boulder       CSCI 4273: Network Systems
 // Requirements:
 //   1. The server must take one command line argument: a port number for the 
 //      server to use. You should select port #'s > 5000.
@@ -23,20 +24,22 @@
 //        back to the client with no modification, stating that the given
 //        command was not understood.
 ////////////////////////////////////////////////////////////////////////////////
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
+////////////////////////////////////////////////////////////////////////////////
 #include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <memory.h>
 #include <netdb.h>
-#include <unistd.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/time.h>
 #include <stdlib.h>
-#include <memory.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /* You will have to modify the program below */
 
@@ -45,53 +48,55 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
-
-
-	int sock;                           // This will be our socket
-	struct sockaddr_in sin, remote;     // "Internet socket address structure"
-	unsigned int remote_length;         // length of the sockaddr_in structure
-	int nbytes;                         // number of bytes we receive in our message
-	char buffer[ MAXBUFSIZE ];          // a buffer to store our received message
-	if ( argc != 2 ) {
-		printf( "USAGE:  <port>\n" );
-		exit( 1 );
-	}
-
-	/******************
-	  This code populates the sockaddr_in struct with
-	  the information about our socket
-	 ******************/
-	bzero( &sin, sizeof( sin ) );               // zero the struct
-	sin.sin_family = AF_INET;                   // address family
-	sin.sin_port = htons( atoi( argv[ 1 ] ) );  // htons() sets the port # to network byte order
-	sin.sin_addr.s_addr = INADDR_ANY;           // supplies the IP address of the local machine
-
-	// Causes the system to create a generic socket of type UDP (datagram)
-	if ( ( sock = **** CALL SOCKET() HERE TO CREATE UDP SOCKET **** ) < 0 ) {
-		printf( "unable to create socket" );
-	}
-
-
-	/******************
-	  Once we've created a socket, we must bind that socket to the 
-	  local address and port we've supplied in the sockaddr_in struct
-	 ******************/
-	if ( bind( sock, ( struct sockaddr * ) &sin, sizeof( sin ) ) < 0 ) {
-		printf( "unable to bind socket\n" );
-	}
-
-	remote_length = sizeof( remote );
-
-	// waits for an incoming message
-	bzero( buffer, sizeof( buffer ) );
-	nbytes = nbytes = **** CALL RECVFROM() HERE ****;
-
-	printf( "The client says %s\n", buffer );
-
-	char msg[] = "orange";
-	nbytes = **** CALL SENDTO() HERE ****;
-
-	close( sock );
+  int sock, ibind;                    // This will be our socket and bind
+  struct sockaddr_in sin, remote;     // "Internet socket address structure"
+  unsigned int remote_length;         // length of the sockaddr_in structure
+  int nbytes;                         // number of bytes we receive in our message
+  char buffer[ MAXBUFSIZE ];          // a buffer to store our received message
+  if ( argc != 2 ) {
+	printf( "USAGE:  <port>\n" );
+	exit( EXIT_FAILURE );
+  }
+  
+  /******************
+	This code populates the sockaddr_in struct with
+	the information about our socket
+  ******************/
+  bzero( &sin, sizeof( sin ) );               // zero the struct
+  sin.sin_family = AF_INET;                   // address family
+  sin.sin_port = htons( atoi( argv[ 1 ] ) );  // htons() sets the port # to network byte order
+  sin.sin_addr.s_addr = INADDR_ANY;           // supplies the IP address of the local machine
+  
+  // Causes the system to create a generic socket of type UDP (datagram)
+  if ( ( sock = socket( AF_LOCAL, SOCK_DGRAM, 0 ) ) < 0 ) {
+	fprintf( stderr, "[%i] Unable to create socket: %s\n", __LINE__ - 1, strerror( errno ) );
+	exit ( EXIT_FAILURE );
+  }
+  
+  
+  /******************
+    Once we've created a socket, we must bind that socket to the 
+	local address and port we've supplied in the sockaddr_in struct
+  ******************/
+  if ( ( ibind = bind( sock, ( struct sockaddr * ) &sin, sizeof( sin ) ) ) < 0 ) {
+	fprintf( stderr, "[%i] Unable to bind socket: %s\n", __LINE__ - 1, strerror( errno ) );
+	exit ( EXIT_FAILURE );
+  }
+  
+  remote_length = sizeof( remote );
+  
+  // waits for an incoming message
+  bzero( buffer, sizeof( buffer ) );
+  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, NULL, 0);
+  
+  printf( "The client says %s\n", buffer );
+  
+  char msg[] = "orange";
+  nbytes = sendto( sock, msg, nbytes, 0, NULL, 0);
+  
+  close( sock );
+  
+  return EXIT_SUCCESS;
 }
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -1,6 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // File:    udp_client.c                Fall 2013
 // Student: Patrick Vargas              patrick.vargas@colorado.edu
+// University of Colorado Boulder       CSCI 4273: Network Systems
 // Requirements
 //   1. The client must take two command line arguments: an IP address of the 
 //      machine on which the server application is running, and the port the 
@@ -18,19 +19,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <memory.h>
 #include <netdb.h>
-#include <unistd.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/time.h>
 #include <stdlib.h>
-#include <memory.h>
-#include <errno.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define MAXBUFSIZE 100
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,49 +39,52 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
-	int nbytes;                             // number of bytes send by sendto()
-	int sock;                               // this will be our socket
-	char buffer[ MAXBUFSIZE ];
-
-	struct sockaddr_in remote;              //"Internet socket address structure"
-
-	if ( argc < 3 ) {
-		printf("USAGE:  <server_ip> <server_port>\n");
-		exit( 1 );
-	}
-
-	/******************
-	  Here we populate a sockaddr_in struct with
-	  information regarding where we'd like to send our packet 
-	  i.e the Server.
-	 ******************/
-	bzero( &remote, sizeof( remote ) );               //zero the struct
-	remote.sin_family = AF_INET;                 //address family
-	remote.sin_port = htons( atoi( argv[ 2 ] ) );      //sets port to network byte order
-	remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); //sets remote IP address
-
-	//Causes the system to create a generic socket of type UDP (datagram)
-	if ( ( sock = **** CALL SOCKET() HERE TO CREATE A UDP SOCKET **** ) < 0 ) {
-		printf( "unable to create socket" );
-	}
-
-	/******************
-	  sendto() sends immediately.  
-	  it will report an error if the message fails to leave the computer
-	  however, with UDP, there is no error if the message is lost in the network once it leaves the computer.
-	 ******************/
-	char command[] = "apple";	
-	nbytes = **** CALL SENDTO() HERE ****;
-
-	// Blocks till bytes are received
-	struct sockaddr_in from_addr;
-	int addr_length = sizeof( struct sockaddr );
-	bzero( buffer, sizeof( buffer ) );
-	nbytes = **** CALL RECVFROM() HERE ****;  
-
-	printf( "Server says %s\n", buffer );
-
-	close( sock );
+  int nbytes;                             // number of bytes send by sendto()
+  int sock;                               // this will be our socket
+  char buffer[ MAXBUFSIZE ];
+  
+  struct sockaddr_in remote;              // "Internet socket address structure"
+  
+  if ( argc < 3 ) {
+	printf("USAGE:  <server_ip> <server_port>\n");
+	exit ( EXIT_FAILURE );
+  }
+  
+  /******************
+	Here we populate a sockaddr_in struct with
+	information regarding where we'd like to send our packet 
+	i.e the Server.
+  ******************/
+  bzero( &remote, sizeof( remote ) );              // zero the struct
+  remote.sin_family = AF_INET;                     // address family
+  remote.sin_port = htons( atoi( argv[ 2 ] ) );    // sets port to network byte order
+  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address
+  
+  // Causes the system to create a generic socket of type UDP (datagram)
+  if ( ( sock = socket( AF_LOCAL, SOCK_DGRAM, 0 ) ) < 0 ) {
+	fprintf( stderr, "[%i] Unable to create socket: %s\n", __LINE__ - 1, strerror( errno ) );
+	exit ( EXIT_FAILURE );
+  }
+  
+  /******************
+	sendto() sends immediately.  
+	it will report an error if the message fails to leave the computer
+	however, with UDP, there is no error if the message is lost in the network once it leaves the computer.
+  ******************/
+  char command[] = "apple";
+  nbytes = sendto( sock, command, nbytes, 0, NULL, 0);
+  
+  // Blocks till bytes are received
+  struct sockaddr_in from_addr;
+  int addr_length = sizeof( struct sockaddr );
+  bzero( buffer, sizeof( buffer ) );
+  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, NULL, 0);  
+  
+  printf( "Server says %s\n", buffer );
+  
+  close( sock );
+  
+  return EXIT_SUCCESS;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
