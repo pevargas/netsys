@@ -61,8 +61,9 @@ int main ( int argc, char * argv[ ] ) {
   remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address
   
   // Causes the system to create a generic socket of type UDP (datagram)
-  if ( ( sock = socket( AF_LOCAL, SOCK_DGRAM, 0 ) ) < 0 ) {
-	fprintf( stderr, "[%i] Unable to create socket: %s\n", __LINE__ - 1, strerror( errno ) );
+  if ( ( sock = socket( PF_INET, SOCK_DGRAM, 0 ) ) < 0 ) {
+	fprintf( stderr, "[%s:%i] Unable to create socket: %s\n", 
+			 __FILE__, __LINE__ - 1, strerror( errno ) );
 	exit ( EXIT_FAILURE );
   }
   
@@ -72,13 +73,13 @@ int main ( int argc, char * argv[ ] ) {
 	however, with UDP, there is no error if the message is lost in the network once it leaves the computer.
   ******************/
   char command[] = "apple";
-  nbytes = sendto( sock, command, nbytes, 0, NULL, 0);
+  nbytes = sendto( sock, command, nbytes, 0, (struct sockaddr * )&remote, sizeof(remote));
   
   // Blocks till bytes are received
   struct sockaddr_in from_addr;
   int addr_length = sizeof( struct sockaddr );
   bzero( buffer, sizeof( buffer ) );
-  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, NULL, 0);  
+  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr_in *) &from_addr, addr_length);  
   
   printf( "Server says %s\n", buffer );
   

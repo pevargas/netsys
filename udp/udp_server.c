@@ -68,8 +68,9 @@ int main ( int argc, char * argv[ ] ) {
   sin.sin_addr.s_addr = INADDR_ANY;           // supplies the IP address of the local machine
   
   // Causes the system to create a generic socket of type UDP (datagram)
-  if ( ( sock = socket( AF_LOCAL, SOCK_DGRAM, 0 ) ) < 0 ) {
-	fprintf( stderr, "[%i] Unable to create socket: %s\n", __LINE__ - 1, strerror( errno ) );
+  if ( ( sock = socket( PF_INET, SOCK_DGRAM, 0 ) ) < 0 ) {
+	fprintf( stderr, "[%s:%i] Unable to create socket: %s\n", 
+			 __FILE__, __LINE__ - 1, strerror( errno ) );
 	exit ( EXIT_FAILURE );
   }
   
@@ -79,7 +80,8 @@ int main ( int argc, char * argv[ ] ) {
 	local address and port we've supplied in the sockaddr_in struct
   ******************/
   if ( ( ibind = bind( sock, ( struct sockaddr * ) &sin, sizeof( sin ) ) ) < 0 ) {
-	fprintf( stderr, "[%i] Unable to bind socket: %s\n", __LINE__ - 1, strerror( errno ) );
+	fprintf( stderr, "[%s:%i] Unable to bind socket: %s\n", 
+			 __FILE__, __LINE__ - 1, strerror( errno ) );
 	exit ( EXIT_FAILURE );
   }
   
@@ -87,7 +89,7 @@ int main ( int argc, char * argv[ ] ) {
   
   // waits for an incoming message
   bzero( buffer, sizeof( buffer ) );
-  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, NULL, 0);
+  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, &sin, remote_length);
   
   printf( "The client says %s\n", buffer );
   
