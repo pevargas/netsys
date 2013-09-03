@@ -18,8 +18,17 @@ client:
 server:
 	$(CC) $(FLAGS) udp_server.c -o $@
 
+deploy:
+	@mkdir vargasp_udp;
+	@cp udp_client.c vargasp_udp;
+	@cp udp_server.c vargasp_udp;
+	@cp makefile vargasp_udp;
+	@cp README.md vargasp_udp/README.txt;
+	@tar -cvf vargasp_udp.tar vargasp_udp;
+
 clean:
-	rm client server *~
+	@-rm client server *~ vargasp_udp.tar;
+	@-rm -r vargasp_udp;
 
 # Obligatory unix joke
 love:
