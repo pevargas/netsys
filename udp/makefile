@@ -13,15 +13,15 @@ FLAGS = -Wall -O2
 all: client server
 
 client: 
-	$(CC) $(FLAGS) udp_client.c -o $@
+	$(CC) $(FLAGS) client.c -o $@
 
 server:
-	$(CC) $(FLAGS) udp_server.c -o $@
+	$(CC) $(FLAGS) server.c -o $@
 
 deploy:
 	@mkdir vargasp_udp;
-	@cp udp_client.c vargasp_udp;
-	@cp udp_server.c vargasp_udp;
+	@cp client.c vargasp_udp;
+	@cp server.c vargasp_udp;
 	@cp makefile vargasp_udp;
 	@cp README.md vargasp_udp/README.txt;
 	@tar -cvf vargasp_udp.tar vargasp_udp;
