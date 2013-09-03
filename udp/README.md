@@ -24,23 +24,23 @@ Commands
 --------
 ### To Run the Program ###
 
-First create the executables `client` and `server` with the following command:  
+1. Create the executables `client` and `server` with the following command:  
 
-	  make
+	  	make
 
-Next, run the server program, replacing <port> with a number between 1024 and 65535:
+2. Run the server program, replacing <port> with a number between 1024 and 65535:
 
-	 ./server <port>
+	 	./server <port>
 
-After that, run `hostname -i` to get the IP address of the server. Open up a new terminal. Use the found address and the port number you used in the following command in the new terminal:
+3. Run `hostname -i` to get the IP address of the server. Open up a new terminal. Use the found address and the port number you used in the following command in the new terminal:
 
-	 ./client <server_ip> <server_port>
+	 	./client <server_ip> <server_port>
 
 That's all for now!
 
 ### Other Useful Commands ###
 
-1. `make clean` to start rm the executables and what have you.
+1. `make clean` to create clean workspace.
 
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
