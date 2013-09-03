@@ -22,10 +22,25 @@ Included Files
 
 Commands
 --------
+### To Run the Program ###
 
-    make
+First create the executables `client` and `server` with the following command:  
 
-make the executables `client` and `server`
+	  make
+
+Next, run the server program, replacing <port> with a number between 1024 and 65535:
+
+	 ./server <port>
+
+After that, run `hostname -i` to get the IP address of the server. Open up a new terminal. Use the found address and the port number you used in the following command in the new terminal:
+
+	 ./client <server_ip> <server_port>
+
+That's all for now!
+
+### Other Useful Commands ###
+
+1. `make clean` to start rm the executables and what have you.
 
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
