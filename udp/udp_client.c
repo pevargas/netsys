@@ -32,10 +32,14 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAXBUFSIZE 100
-////////////////////////////////////////////////////////////////////////////////
-
 /* You will have to modify the program below */
+
+#define MAXBUFSIZE 100
+#define ERROR( boolean ) if ( boolean ) {\
+    fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
+    exit ( EXIT_FAILURE );\
+  }
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
@@ -59,13 +63,11 @@ int main ( int argc, char * argv[ ] ) {
   remote.sin_family = AF_INET;                     // address family
   remote.sin_port = htons( atoi( argv[ 2 ] ) );    // sets port to network byte order
   remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address
+  ERROR( remote.sin_addr.s_addr < 0 );
   
   // Causes the system to create a generic socket of type UDP (datagram)
-  if ( ( sock = socket( PF_INET, SOCK_DGRAM, 0 ) ) < 0 ) {
-	fprintf( stderr, "[%s:%i] Unable to create socket: %s\n", 
-			 __FILE__, __LINE__ - 1, strerror( errno ) );
-	exit ( EXIT_FAILURE );
-  }
+  sock = socket( AF_INET, SOCK_DGRAM, 0 );
+  ERROR( sock < 0 );
   
   /******************
 	sendto() sends immediately.  
@@ -73,16 +75,19 @@ int main ( int argc, char * argv[ ] ) {
 	however, with UDP, there is no error if the message is lost in the network once it leaves the computer.
   ******************/
   char command[] = "apple";
-  nbytes = sendto( sock, command, nbytes, 0, (struct sockaddr * )&remote, sizeof(remote));
-  
+  nbytes = sendto( sock, command, MAXBUFSIZE, 0, (struct sockaddr *)&remote, sizeof(remote));
+  ERROR ( nbytes < 0 );
+  printf( "Client sent %i bytes to Server(%s:%d)\n", 
+	  nbytes, inet_ntoa(remote.sin_addr), ntohs(remote.sin_port) );  
+ 
   // Blocks till bytes are received
   struct sockaddr_in from_addr;
-  int addr_length = sizeof( struct sockaddr );
+  unsigned int addr_length = sizeof( struct sockaddr );
   bzero( buffer, sizeof( buffer ) );
-  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr_in *) &from_addr, addr_length);  
-  
-  printf( "Server says %s\n", buffer );
-  
+  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
+  ERROR ( nbytes < 0 );
+ 
+  printf( "Server(%s:%d): %s\n", inet_ntoa(from_addr.sin_addr), ntohs(from_addr.sin_port), buffer );    
   close( sock );
   
   return EXIT_SUCCESS;

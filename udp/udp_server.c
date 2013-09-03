@@ -44,6 +44,11 @@
 /* You will have to modify the program below */
 
 #define MAXBUFSIZE 100
+
+#define ERROR( boolean ) if ( boolean ) {\
+    fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
+    exit ( EXIT_FAILURE );\
+  }
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,8 +64,8 @@ int main ( int argc, char * argv[ ] ) {
   }
   
   /******************
-	This code populates the sockaddr_in struct with
-	the information about our socket
+     This code populates the sockaddr_in struct with
+     the information about our socket
   ******************/
   bzero( &sin, sizeof( sin ) );               // zero the struct
   sin.sin_family = AF_INET;                   // address family
@@ -68,34 +73,31 @@ int main ( int argc, char * argv[ ] ) {
   sin.sin_addr.s_addr = INADDR_ANY;           // supplies the IP address of the local machine
   
   // Causes the system to create a generic socket of type UDP (datagram)
-  if ( ( sock = socket( PF_INET, SOCK_DGRAM, 0 ) ) < 0 ) {
-	fprintf( stderr, "[%s:%i] Unable to create socket: %s\n", 
-			 __FILE__, __LINE__ - 1, strerror( errno ) );
-	exit ( EXIT_FAILURE );
-  }
-  
-  
+  sock = socket( PF_INET, SOCK_DGRAM, 0 );
+  ERROR( sock < 0 );
+    
   /******************
     Once we've created a socket, we must bind that socket to the 
 	local address and port we've supplied in the sockaddr_in struct
   ******************/
-  if ( ( ibind = bind( sock, ( struct sockaddr * ) &sin, sizeof( sin ) ) ) < 0 ) {
-	fprintf( stderr, "[%s:%i] Unable to bind socket: %s\n", 
-			 __FILE__, __LINE__ - 1, strerror( errno ) );
-	exit ( EXIT_FAILURE );
-  }
+  ibind = bind( sock, ( struct sockaddr * ) &sin, sizeof( sin ) );
+  ERROR ( ibind < 0 );
   
   remote_length = sizeof( remote );
   
   // waits for an incoming message
+
   bzero( buffer, sizeof( buffer ) );
-  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, &sin, remote_length);
-  
-  printf( "The client says %s\n", buffer );
-  
+  nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+  ERROR ( nbytes < 0 );
+  printf( "Client(%s:%d): %s\n", 
+	  inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
+
   char msg[] = "orange";
-  nbytes = sendto( sock, msg, nbytes, 0, NULL, 0);
-  
+  nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
+  ERROR ( nbytes < 0 );
+  printf( "Server sent %i bytes\n", nbytes);
+
   close( sock );
   
   return EXIT_SUCCESS;
