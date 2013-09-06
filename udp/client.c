@@ -117,7 +117,7 @@ int main ( int argc, char * argv[ ] ) {
 	  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
 	  ERROR ( nbytes < 0 );
 	  
-	  printf( "- %s\n", buffer );
+	  printf( "%s\n", buffer );
 	}
   } while ( !isQuit( cmd ) );  
   
@@ -130,14 +130,11 @@ int main ( int argc, char * argv[ ] ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] ) {
-  if ( tolower( cmd[0] ) == 'e' &&
-	   tolower( cmd[1] ) == 'x' &&
-	   tolower( cmd[2] ) == 'i' &&
-	   tolower( cmd[3] ) == 't'
-	   ) {
-	return 1;
-  }
+  // Convert string to lowercase
+  int i;
+  for (i = 0; cmd[i]; ++i ) cmd[i] = tolower( cmd[i] );
 
+  if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
 }
 ////////////////////////////////////////////////////////////////////////////////

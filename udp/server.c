@@ -73,6 +73,8 @@ int main ( int argc, char * argv[ ] ) {
   int nbytes;                        // number of bytes we receive in our message
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
   char msg[ MAXBUFSIZE ];
+  char *newline = NULL;         // Get newline
+  FILE *fp;
 
   //
   // Make sure port is given on command line
@@ -124,7 +126,7 @@ int main ( int argc, char * argv[ ] ) {
 	printf( "Client(%s:%d): %s\n", 
 			inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
 	
-	switch ( parseCmd ( buffer) ) {
+	switch ( parseCmd ( buffer ) ) {
 	case PUT:
 	  sprintf( msg, "Server will put file.");
 	  break;
@@ -132,7 +134,16 @@ int main ( int argc, char * argv[ ] ) {
 	  sprintf( msg, "Server will get file.");	  
 	  break;
 	case LS:
-	  sprintf( msg, "Server will list files.");
+	  *buffer = '\0';
+      *msg = '\0';
+	  fp = popen( "ls", "r" );
+	  ERROR ( fp == NULL );
+	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
+		newline = strchr( buffer, '\n'); // Find the newline
+		if ( newline != NULL ) *newline = ' '; // Overwrite
+	    strcat( msg, buffer );
+	  }
+	  ERROR( pclose( fp ) < 0 );
 	  break;
 	case EXIT:
 	  sprintf( msg, "Server will exit.");
@@ -141,7 +152,7 @@ int main ( int argc, char * argv[ ] ) {
 	  sprintf( msg, "Invalid command: %s", buffer);
 	  break;
 	}
-	printf( "- %s\n", msg );
+	printf( "%s\n", msg );
 	
 	// Send response
 	nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
