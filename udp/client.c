@@ -20,6 +20,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <memory.h>
@@ -42,55 +43,101 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Function to see if it's time to terminate program.
+int isQuit ( char cmd[ ] );
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
-  int nbytes;                             // number of bytes send by sendto()
-  int sock;                               // this will be our socket
-  char buffer[ MAXBUFSIZE ];
+  //
+  // Variables
+  // 
+  int nbytes;                   // Number of bytes send by sendto()
+  int sock;                     // This will be our socket
+  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
+  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
+  char *newline = NULL;         // Get newline
+  struct sockaddr_in remote;    // "Internet socket address structure"
+  struct sockaddr_in from_addr; // Socket for server
+  unsigned int addr_length = sizeof( struct sockaddr );
   
-  struct sockaddr_in remote;              // "Internet socket address structure"
-  
+  // Make sure ip and port are given
   if ( argc < 3 ) {
 	printf("USAGE:  <server_ip> <server_port>\n");
 	exit ( EXIT_FAILURE );
   }
   
-  /******************
-	Here we populate a sockaddr_in struct with
-	information regarding where we'd like to send our packet 
-	i.e the Server.
-  ******************/
-  bzero( &remote, sizeof( remote ) );              // zero the struct
-  remote.sin_family = AF_INET;                     // address family
-  remote.sin_port = htons( atoi( argv[ 2 ] ) );    // sets port to network byte order
-  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address
+  // 
+  // Set up the socket 
+  //
+  /*******************
+    Here we populate a sockaddr_in struct with information 
+      regarding where we'd like to send our packet i.e the Server.
+  ********************/
+  // zero the struct
+  bzero( &remote, sizeof( remote ) );             
+  // address family
+  remote.sin_family = AF_INET;                     
+  // sets port to network byte order
+  remote.sin_port = htons( atoi( argv[ 2 ] ) );  
+  // sets remote IP address  
+  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] );
+  
   ERROR( remote.sin_addr.s_addr < 0 );
   
-  // Causes the system to create a generic socket of type UDP (datagram)
+  // Causes the system to create a generic socket of 
+  //   type UDP (datagram)
   sock = socket( AF_INET, SOCK_DGRAM, 0 );
-  ERROR( sock < 0 );
+  ERROR( sock < 0 );  
+
+  //
+  // Enter command loop
+  //
+  do {
+	bzero( cmd, sizeof( cmd ) );
+	printf( "> " );
+	if ( fgets( cmd, MAXBUFSIZE, stdin ) != NULL ) {
+	  newline = strchr( cmd, '\n'); // Find the newline
+	  if ( newline != NULL ) *newline = '\0'; // Overwrite
+	  //scanf( "%s", cmd );
+	  
+	  /*******************
+	    sendto() sends immediately.  
+	      it will report an error if the message fails to leave the 
+          computer.Hhowever, with UDP, there is no error if the message 
+          is lost in the network once it leaves the computer.
+	  ********************/  
+	  nbytes = sendto( sock, cmd, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+	  ERROR ( nbytes < 0 );
+	  //printf( "Client sent %i bytes to Server(%s:%d)\n", 
+	  //		nbytes, inet_ntoa(remote.sin_addr), ntohs(remote.sin_port) );  
+	  
+	  // Blocks till bytes are received
+	  bzero( buffer, sizeof( buffer ) );
+	  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
+	  ERROR ( nbytes < 0 );
+	  
+	  printf( "- %s\n", buffer );
+	}
+  } while ( !isQuit( cmd ) );  
   
-  /******************
-	sendto() sends immediately.  
-	it will report an error if the message fails to leave the computer
-	however, with UDP, there is no error if the message is lost in the network once it leaves the computer.
-  ******************/
-  char command[] = "apple";
-  nbytes = sendto( sock, command, MAXBUFSIZE, 0, (struct sockaddr *)&remote, sizeof(remote));
-  ERROR ( nbytes < 0 );
-  printf( "Client sent %i bytes to Server(%s:%d)\n", 
-	  nbytes, inet_ntoa(remote.sin_addr), ntohs(remote.sin_port) );  
- 
-  // Blocks till bytes are received
-  struct sockaddr_in from_addr;
-  unsigned int addr_length = sizeof( struct sockaddr );
-  bzero( buffer, sizeof( buffer ) );
-  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
-  ERROR ( nbytes < 0 );
- 
-  printf( "Server(%s:%d): %s\n", inet_ntoa(from_addr.sin_addr), ntohs(from_addr.sin_port), buffer );    
   close( sock );
   
   return EXIT_SUCCESS;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Function to see if it's time to terminate program.
+int isQuit ( char cmd[ ] ) {
+  if ( tolower( cmd[0] ) == 'e' &&
+	   tolower( cmd[1] ) == 'x' &&
+	   tolower( cmd[2] ) == 'i' &&
+	   tolower( cmd[3] ) == 't'
+	   ) {
+	return 1;
+  }
+
+  return 0;
+}
+////////////////////////////////////////////////////////////////////////////////
