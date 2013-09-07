@@ -60,6 +60,10 @@ int isQuit ( char cmd[ ] );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
+
+////////////////////////////////////////////////////////////////////////////////
+// Recieve put data from the client
+void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +73,11 @@ int main ( int argc, char * argv[ ] ) {
   //
   int sock, ibind;                   // This will be our socket and bind
   int nbytes;                        // number of bytes we receive in our message
-  int eof;                           // Flag for end of file stream
   struct sockaddr_in client, remote; // "Internet socket address structure"
   unsigned int remote_length;        // length of the sockaddr_in structure
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
   char msg[ MAXBUFSIZE ];            // Message to return
   char *newline = NULL;              // Get newline
-  char filename[ MAXBUFSIZE ];       // Name of file
-  char *temp = NULL;
   FILE *fp;                          // Pointer to file
 
   //
@@ -130,37 +131,7 @@ int main ( int argc, char * argv[ ] ) {
 	
 	switch ( parseCmd ( buffer ) ) {
 	case PUT:
-	  // Check for filename
-	  memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
-	  if ( strcmp( filename, "" ) != 0 ) {
-		strcat( filename, "_server" );
-		sprintf( msg, "Filename: %s", filename );
-		
-		// Wait for incoming message
-		bzero( buffer, sizeof( buffer ) );
-		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-		ERROR( nbytes < 0 );
-
-		if ( strcmp( buffer, "File does not exist" ) == 0 ) sprintf( msg, "%s", buffer );
-		else {
-		  fp = fopen( filename, "w" );
-		  ERROR( fp == NULL );
-		  eof = 0;
-		  while ( !eof ) {
-			nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-			ERROR( nbytes < 0 );
-
-			if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
-			else {
-			  fputs( buffer, fp );
-			  printf( "%s", buffer );
-			}
-		  }
-		  ERROR( fclose( fp ) );
-		}
-	  }
-	  else
-		sprintf( msg, "Invalid File name.");
+	  put( msg, buffer, sock, remote );
 	  break;
 	case GET:
 	  sprintf( msg, "Server will get file.");	  
@@ -229,3 +200,46 @@ int parseCmd ( char cmd[ ] ) {
   else return INVALID;
 }
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Recieve put data from the client
+void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) { 
+  int nbytes;                        // number of bytes we receive in our message
+  int eof;                           // Flag for end of file stream
+  unsigned int remote_length;        // length of the sockaddr_in structure
+  char filename[ MAXBUFSIZE ];       // Name of file
+  FILE *fp;                          // Pointer to file
+
+  remote_length = sizeof( remote );
+
+  // Check for filename
+  memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
+  if ( strcmp( filename, "" ) != 0 ) {
+	strcat( filename, "_server" );
+	sprintf( msg, "Filename: %s", filename );
+	
+	// Wait for incoming message
+	bzero( buffer, sizeof( buffer ) );
+	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+	ERROR( nbytes < 0 );
+	
+	if ( strcmp( buffer, "File does not exist" ) == 0 ) sprintf( msg, "%s", buffer );
+	else {
+	  fp = fopen( filename, "w" );
+	  ERROR( fp == NULL );
+	  eof = 0;
+	  while ( !eof ) {
+		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+		ERROR( nbytes < 0 );
+		
+		if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
+		else {
+		  fputs( buffer, fp );
+		  printf( "%s", buffer );
+		}
+	  }
+		  ERROR( fclose( fp ) );
+	}
+  }
+  else sprintf( msg, "Invalid File name.");
+} // put()

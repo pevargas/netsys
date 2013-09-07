@@ -45,6 +45,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
+
+// Function to handle put command
+void put ( char cmd [ ], int sock, struct sockaddr_in remote );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,13 +57,10 @@ int main ( int argc, char * argv[ ] ) {
   // 
   int nbytes;                   // Number of bytes send by sendto()
   int sock;                     // This will be our socket
-  int i;                        // Iterator
   char buffer[ MAXBUFSIZE ];    // Recieve data from Server
   char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
   char temp[ MAXBUFSIZE ];      // Temporary string holder
   char *newline = NULL;         // Get newline
-  char filename[ MAXBUFSIZE ];  // Name of file
-  FILE *fp;                     // Pointer to file
   struct sockaddr_in remote;    // "Internet socket address structure"
   struct sockaddr_in from_addr; // Socket for server
   unsigned int addr_length = sizeof( struct sockaddr );
@@ -120,53 +120,22 @@ int main ( int argc, char * argv[ ] ) {
 	  
 	  //
 	  // Put Command
-	  // 
-	  // Convert string to lowercase
-	  for (i = 0; cmd[i]; ++i ) cmd[i] = tolower( cmd[i] ); 
-	  // Check for put command
-	  sscanf ( cmd, "%s", temp );
-	  if ( strcmp( "put", temp ) == 0 ) {
-		// Check for filename
-		memcpy( filename, cmd + 4, strlen( cmd ) + 1 );
-		// Make sure filename isn't null
-		if ( strcmp( filename, "" ) != 0 ) {
-		  fp = fopen( filename, "r" );
-		  // See if file exists
-		  if ( fp == NULL ) {
-			// If file is MIA, print message to buffer
-			if ( errno == ENOENT ) {
-			  sprintf( buffer, "File does not exist" );
-			  // Send buffer
-			  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-			  ERROR ( nbytes < 0 );
-			}
-			else ERROR ( fp == NULL );
-		  }
-		  else {
-			*buffer = '\0';
-			// Else read contents of file into buffer
-			while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
-			  printf( "%s", buffer );
-			  // Send one line from file
-			  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-			  ERROR ( nbytes < 0 );
-			}
-			// Tell server we're done
-			sprintf( buffer, "Finished sending file" );
-			// Send buffer
-			nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-			ERROR ( nbytes < 0 );
-			ERROR ( fclose( fp ) );
-		  }
-		}
-	  }		
+	  //
+	  put ( cmd, sock, remote );
 
+	  //
+	  //
+	  //
+	  
 	  // Blocks till bytes are received
 	  bzero( buffer, sizeof( buffer ) );
 	  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
 	  ERROR ( nbytes < 0 );
 	  
 	  printf( "%s\n", buffer );
+	}
+	else if ( strcmp( "get", temp ) == 0 ) {
+
 	}
   } while ( !isQuit( cmd ) );  
   
@@ -187,3 +156,58 @@ int isQuit ( char cmd[ ] ) {
   return 0;
 }
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to handle put command
+void put ( char cmd [ ], int sock, struct sockaddr_in remote ) { 
+  int i;                        // Iterator
+  int nbytes;                   // Number of bytes send by sendto()
+  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
+  char filename[ MAXBUFSIZE ];  // Name of file
+  char temp[ MAXBUFSIZE ];      // Temporary string holder
+  FILE *fp;                     // Pointer to file
+
+  // Convert string to lowercase
+  for (i = 0; cmd[i]; ++i ) cmd[i] = tolower( cmd[i] ); 
+
+  // Check for put command
+  sscanf ( cmd, "%s", temp );
+
+  if ( strcmp( "put", temp ) == 0 ) {
+	// Check for filename
+	memcpy( filename, cmd + 4, strlen( cmd ) + 1 );
+	// Make sure filename isn't null
+	if ( strcmp( filename, "" ) != 0 ) {
+	  fp = fopen( filename, "r" );
+	  // See if file exists
+	  if ( fp == NULL ) {
+		// If file is MIA, print message to buffer
+		if ( errno == ENOENT ) {
+		  sprintf( buffer, "File does not exist" );
+		  // Send buffer
+		  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+		  ERROR ( nbytes < 0 );
+		}
+		else ERROR ( fp == NULL );
+	  } // fp == NULL
+	  else {
+		*buffer = '\0';
+		// Else read contents of file into buffer
+		while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
+		  printf( "%s", buffer );
+		  // Send one line from file
+		  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+		  ERROR ( nbytes < 0 );
+		}
+		// Tell server we're done
+		sprintf( buffer, "Finished sending file" );
+		// Send buffer
+		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+		ERROR ( nbytes < 0 );
+		ERROR ( fclose( fp ) );
+	  }
+	} // filename != ""
+  } // put == temp
+} // void put ()
+////////////////////////////////////////////////////////////////////////////////
+  
