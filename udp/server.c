@@ -61,7 +61,6 @@ int isQuit ( char cmd[ ] );
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
 
-////////////////////////////////////////////////////////////////////////////////
 // Recieve put data from the client
 void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,3 +242,4 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
   }
   else sprintf( msg, "Invalid File name.");
 } // put()
+////////////////////////////////////////////////////////////////////////////////
