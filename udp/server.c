@@ -234,10 +234,10 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 		if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
 		else {
 		  fputs( buffer, fp );
-		  printf( "%s", buffer );
+		  //printf( "%s", buffer );
 		}
 	  }
-		  ERROR( fclose( fp ) );
+	  ERROR( fclose( fp ) );
 	}
   }
   else sprintf( msg, "Invalid File name.");
