@@ -58,6 +58,9 @@ enum COMMAND { PUT, GET, LS, EXIT, INVALID };
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
+// Function to handle get command
+void get ( char cmd [ ], int sock, struct sockaddr_in remote );
+
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
 
@@ -178,6 +181,50 @@ int isQuit ( char cmd[ ] ) {
   if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
 }
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to handle get command
+void get ( char cmd [ ], int sock, struct sockaddr_in remote ) { 
+  int nbytes;                   // Number of bytes send by sendto()
+  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
+  char filename[ MAXBUFSIZE ];  // Name of file
+  FILE *fp;                     // Pointer to file
+  
+  // Check for filename
+  memcpy( filename, cmd + 4, strlen( cmd ) + 1 );
+  // Make sure filename isn't null
+  if ( strcmp( filename, "" ) != 0 ) {
+	fp = fopen( filename, "r" );
+	// See if file exists
+	if ( fp == NULL ) {
+	  // If file is MIA, print message to buffer
+	  if ( errno == ENOENT ) {
+		sprintf( buffer, "File does not exist" );
+		// Send buffer
+		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+		ERROR ( nbytes < 0 );
+	  }
+	  else ERROR ( fp == NULL );
+	} // fp == NULL
+	else {
+	  *buffer = '\0';
+	  // Else read contents of file into buffer
+	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
+		printf( "%s", buffer );
+		// Send one line from file
+		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+		ERROR ( nbytes < 0 );
+	  }
+	  // Tell server we're done
+	  sprintf( buffer, "Finished putting file" );
+	  // Send buffer
+	  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+	  ERROR ( nbytes < 0 );
+	  ERROR ( fclose( fp ) );
+	}
+  } // filename != ""
+} // void get ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

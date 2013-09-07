@@ -49,6 +49,9 @@ enum COMMAND { PUT, GET, LS, EXIT, INVALID };
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
+// Recieve get data from the server
+void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
+
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
 
@@ -159,6 +162,47 @@ int isQuit ( char cmd[ ] ) {
   if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
 }
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Recieve get data from the server
+void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) { 
+  int nbytes;                        // number of bytes we receive in our message
+  int eof;                           // Flag for end of file stream
+  unsigned int remote_length;        // length of the sockaddr_in structure
+  char filename[ MAXBUFSIZE ];       // Name of file
+  FILE *fp;                          // Pointer to file
+
+  remote_length = sizeof( remote );
+
+  // Check for filename
+  memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
+  if ( strcmp( filename, "" ) != 0 ) {
+	strcat( filename, "_server" );
+	sprintf( msg, "Filename: %s", filename );
+	
+	// Wait for incoming message
+	bzero( buffer, sizeof( buffer ) );
+	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+	ERROR( nbytes < 0 );
+	
+	if ( strcmp( buffer, "File does not exist" ) == 0 ) sprintf( msg, "%s", buffer );
+	else {
+	  fp = fopen( filename, "w" );
+	  ERROR( fp == NULL );
+	  eof = 0;
+	  while ( !eof ) {
+		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+		ERROR( nbytes < 0 );
+		
+		if ( strcmp( buffer, "Finished putting file" ) == 0 ) eof = 1;
+		else fputs( buffer, fp );
+	  }
+	  ERROR( fclose( fp ) );
+	}
+  }
+  else sprintf( msg, "USAGE: put <file_name>");
+} // get()
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
