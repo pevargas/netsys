@@ -269,11 +269,12 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 	  ERROR( fp == NULL );
 	  eof = 0;
 	  while ( !eof ) {
-		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-		ERROR( nbytes < 0 );
-		
 		if ( strcmp( buffer, "Finished putting file" ) == 0 ) eof = 1;
-		else fputs( buffer, fp );
+		else {
+		  fputs( buffer, fp );
+		  nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+		  ERROR( nbytes < 0 );
+		}
 	  }
 	  ERROR( fclose( fp ) );
 	}

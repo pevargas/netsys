@@ -9,8 +9,7 @@
 #------------------------------------------------------------------------------#
 CC     = gcc
 FLAGS  = -Wall
-REM    = $(wildcard client server *~ vargasp_udp.tar)
-REMDIR = $(wildcard vargasp_udp)
+REM    = $(wildcard client server *~ *_* vargasp_udp.tar)
 
 all: client server
 
@@ -21,7 +20,7 @@ server:
 	$(CC) $(FLAGS) server.c -o $@
 
 deploy:
-	@mkdir vargasp_udp;
+	@mkdir -f vargasp_udp;
 	@cp client.c vargasp_udp;
 	@cp server.c vargasp_udp;
 	@cp makefile vargasp_udp;
@@ -29,9 +28,7 @@ deploy:
 	@tar -cvf vargasp_udp.tar vargasp_udp;
 
 clean:
-	@rm $(REM) *_*;
-	@rm -r $(REMDIR);
-
+	@rm $(REM);
 
 # Obligatory unix joke
 love:
