@@ -50,5 +50,10 @@ Commands
 
 1. `make clean` to create clean workspace.
 
+Acknowledgments
+---------------
+
+This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 1 - UDP Socket Programming", University of Colorado Boulder. My implementation builds upon the tar file given to us.
+
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
