@@ -36,7 +36,15 @@ Commands
 
 	 	./client <server_ip> <server_port>
 
-That's all for now!
+### While running the client ####
+
+1. `put <file_name>` to put file on server.
+
+2. `get <file_name>` to get file from server.
+
+3. `ls` to list all the files on the server.
+
+4. `exit` to destroy connection safely.
 
 ### Other Useful Commands ###
 
