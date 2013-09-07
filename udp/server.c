@@ -59,7 +59,7 @@ enum COMMAND { PUT, GET, LS, EXIT, INVALID };
 int isQuit ( char cmd[ ] );
 
 // Function to handle get command
-void get ( char cmd [ ], int sock, struct sockaddr_in remote );
+void get ( char msg [], char cmd [ ], int sock, struct sockaddr_in remote );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
@@ -132,12 +132,8 @@ int main ( int argc, char * argv[ ] ) {
 	printf( "Client(%s:%d): %s\n", inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
 	
 	switch ( parseCmd ( buffer ) ) {
-	case PUT:
-	  put( msg, buffer, sock, remote );
-	  break;
-	case GET:
-	  sprintf( msg, "Server will get file.");	  
-	  break;
+	case PUT: put ( msg, buffer, sock, remote ); break;
+	case GET: get ( msg, buffer, sock, remote ); break;
 	case LS:
 	  *buffer = '\0';
       *msg = '\0';
@@ -150,12 +146,8 @@ int main ( int argc, char * argv[ ] ) {
 	  }
 	  ERROR( pclose( fp ) < 0 );
 	  break;
-	case EXIT:
-	  sprintf( msg, "Server will exit.");
-	  break;
-	default:
-	  sprintf( msg, "Invalid command: %s", buffer);
-	  break;
+	case EXIT: sprintf( msg, "Server will exit."); break;
+	default: sprintf( msg, "Invalid command: %s", buffer); break;
 	}
 	printf( "%s\n", msg );
 	
@@ -185,7 +177,7 @@ int isQuit ( char cmd[ ] ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function to handle get command
-void get ( char cmd [ ], int sock, struct sockaddr_in remote ) { 
+void get ( char msg [ ], char cmd [ ], int sock, struct sockaddr_in remote ) { 
   int nbytes;                   // Number of bytes send by sendto()
   char buffer[ MAXBUFSIZE ];    // Recieve data from Server
   char filename[ MAXBUFSIZE ];  // Name of file
@@ -201,6 +193,7 @@ void get ( char cmd [ ], int sock, struct sockaddr_in remote ) {
 	  // If file is MIA, print message to buffer
 	  if ( errno == ENOENT ) {
 		sprintf( buffer, "File does not exist" );
+		strcpy( msg, buffer );
 		// Send buffer
 		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
 		ERROR ( nbytes < 0 );
@@ -217,13 +210,14 @@ void get ( char cmd [ ], int sock, struct sockaddr_in remote ) {
 		ERROR ( nbytes < 0 );
 	  }
 	  // Tell server we're done
-	  sprintf( buffer, "Finished putting file" );
+	  sprintf( buffer, "Finished getting file" );
+	  strcpy( msg, buffer );
 	  // Send buffer
 	  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
 	  ERROR ( nbytes < 0 );
 	  ERROR ( fclose( fp ) );
 	}
-  } // filename != ""
+  }  else sprintf( msg, "USAGE: get <file_name>");
 } // void get ()
 ////////////////////////////////////////////////////////////////////////////////
 

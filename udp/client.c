@@ -50,7 +50,7 @@ enum COMMAND { PUT, GET, LS, EXIT, INVALID };
 int isQuit ( char cmd[ ] );
 
 // Recieve get data from the server
-void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
+void get ( char buffer [], int sock, struct sockaddr_in remote );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
@@ -132,6 +132,7 @@ int main ( int argc, char * argv[ ] ) {
 	  //
 	  switch ( parseCmd ( cmd ) ) {
 	  case PUT:	put ( cmd, sock, remote ); break;
+	  case GET: get ( cmd, sock, remote ); break;
 	  }
 		
 	  // Blocks till bytes are received
@@ -166,7 +167,7 @@ int isQuit ( char cmd[ ] ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Recieve get data from the server
-void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) { 
+void get ( char buffer [], int sock, struct sockaddr_in remote ) { 
   int nbytes;                        // number of bytes we receive in our message
   int eof;                           // Flag for end of file stream
   unsigned int remote_length;        // length of the sockaddr_in structure
@@ -178,16 +179,14 @@ void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
   // Check for filename
   memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
   if ( strcmp( filename, "" ) != 0 ) {
-	strcat( filename, "_server" );
-	sprintf( msg, "Filename: %s", filename );
+	strcat( filename, "_client" );
 	
 	// Wait for incoming message
 	bzero( buffer, sizeof( buffer ) );
 	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
 	ERROR( nbytes < 0 );
 	
-	if ( strcmp( buffer, "File does not exist" ) == 0 ) sprintf( msg, "%s", buffer );
-	else {
+	if ( strcmp( buffer, "File does not exist" ) != 0 ) {
 	  fp = fopen( filename, "w" );
 	  ERROR( fp == NULL );
 	  eof = 0;
@@ -195,13 +194,12 @@ void get ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
 		ERROR( nbytes < 0 );
 		
-		if ( strcmp( buffer, "Finished putting file" ) == 0 ) eof = 1;
+		if ( strcmp( buffer, "Finished getting file" ) == 0 ) eof = 1;
 		else fputs( buffer, fp );
 	  }
 	  ERROR( fclose( fp ) );
 	}
   }
-  else sprintf( msg, "USAGE: put <file_name>");
 } // get()
 ////////////////////////////////////////////////////////////////////////////////
 
