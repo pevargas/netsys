@@ -55,5 +55,10 @@ Acknowledgments
 
 This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 1 - UDP Socket Programming", University of Colorado Boulder. My implementation builds upon the tar file given to us.
 
+Notes 
+-----
+
+With three minutes to spare, I was able to turn it in. I was able to get the basic program working, such as the `ls` and `exit` command. The `get` and `put` commands do work. With a text file, there is no problem. With the three minutes to spare, I discovered I was using the wrong functions to implment binary file transfer. If I had more time, I believe I could have completed the assignemnt. Perhaps I will in the future, if time permits.
+
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
