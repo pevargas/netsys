@@ -20,7 +20,7 @@ server:
 	$(CC) $(FLAGS) server.c -o $@
 
 deploy:
-	@mkdir -f vargasp_udp;
+	@mkdir vargasp_udp;
 	@cp client.c vargasp_udp;
 	@cp server.c vargasp_udp;
 	@cp makefile vargasp_udp;
