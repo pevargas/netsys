@@ -29,8 +29,9 @@ deploy:
 	@tar -cvf vargasp_udp.tar vargasp_udp;
 
 clean:
-	@-rm $(REM);
-	@-rm -r $(REMDIR);
+	@rm $(REM) *_*;
+	@rm -r $(REMDIR);
+
 
 # Obligatory unix joke
 love:

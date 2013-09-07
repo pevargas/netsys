@@ -232,10 +232,7 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 		ERROR( nbytes < 0 );
 		
 		if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
-		else {
-		  fputs( buffer, fp );
-		  //printf( "%s", buffer );
-		}
+		else fputs( buffer, fp );
 	  }
 	  ERROR( fclose( fp ) );
 	}
