@@ -231,12 +231,12 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
 		ERROR( nbytes < 0 );
 		
-		if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
+		if ( strcmp( buffer, "Finished putting file" ) == 0 ) eof = 1;
 		else fputs( buffer, fp );
 	  }
 	  ERROR( fclose( fp ) );
 	}
   }
-  else sprintf( msg, "Invalid File name.");
+  else sprintf( msg, "USAGE: put <file_name>");
 } // put()
 ////////////////////////////////////////////////////////////////////////////////

@@ -215,7 +215,7 @@ void put ( char cmd [ ], int sock, struct sockaddr_in remote ) {
 		ERROR ( nbytes < 0 );
 	  }
 	  // Tell server we're done
-	  sprintf( buffer, "Finished sending file" );
+	  sprintf( buffer, "Finished putting file" );
 	  // Send buffer
 	  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
 	  ERROR ( nbytes < 0 );
