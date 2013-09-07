@@ -68,13 +68,16 @@ int main ( int argc, char * argv[ ] ) {
   // Variables
   //
   int sock, ibind;                   // This will be our socket and bind
+  int nbytes;                        // number of bytes we receive in our message
+  int eof;                           // Flag for end of file stream
   struct sockaddr_in client, remote; // "Internet socket address structure"
   unsigned int remote_length;        // length of the sockaddr_in structure
-  int nbytes;                        // number of bytes we receive in our message
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
-  char msg[ MAXBUFSIZE ];
-  char *newline = NULL;         // Get newline
-  FILE *fp;
+  char msg[ MAXBUFSIZE ];            // Message to return
+  char *newline = NULL;              // Get newline
+  char filename[ MAXBUFSIZE ];       // Name of file
+  char *temp = NULL;
+  FILE *fp;                          // Pointer to file
 
   //
   // Make sure port is given on command line
@@ -110,7 +113,7 @@ int main ( int argc, char * argv[ ] ) {
 	local address and port we've supplied in the sockaddr_in struct
   *********************/
   ibind = bind( sock, ( struct sockaddr * ) &client, sizeof( client ) );
-  ERROR ( ibind < 0 );
+  ERROR( ibind < 0 );
   remote_length = sizeof( remote );
   
   printf( "Waiting for client\n" );
@@ -119,16 +122,45 @@ int main ( int argc, char * argv[ ] ) {
   // Enter command loop
   //
   do {
-	// waits for an incoming message
+	// Wait for incoming message
 	bzero( buffer, sizeof( buffer ) );
 	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-	ERROR ( nbytes < 0 );
-	printf( "Client(%s:%d): %s\n", 
-			inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
+	ERROR( nbytes < 0 );
+	printf( "Client(%s:%d): %s\n", inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
 	
 	switch ( parseCmd ( buffer ) ) {
 	case PUT:
-	  sprintf( msg, "Server will put file.");
+	  // Check for filename
+	  memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
+	  if ( strcmp( filename, "" ) != 0 ) {
+		strcat( filename, "_server" );
+		sprintf( msg, "Filename: %s", filename );
+		
+		// Wait for incoming message
+		bzero( buffer, sizeof( buffer ) );
+		nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+		ERROR( nbytes < 0 );
+
+		if ( strcmp( buffer, "File does not exist" ) == 0 ) sprintf( msg, "%s", buffer );
+		else {
+		  fp = fopen( filename, "w" );
+		  ERROR( fp == NULL );
+		  eof = 0;
+		  while ( !eof ) {
+			nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+			ERROR( nbytes < 0 );
+
+			if ( strcmp( buffer, "Finished sending file" ) == 0 ) eof = 1;
+			else {
+			  fputs( buffer, fp );
+			  printf( "%s", buffer );
+			}
+		  }
+		  ERROR( fclose( fp ) );
+		}
+	  }
+	  else
+		sprintf( msg, "Invalid File name.");
 	  break;
 	case GET:
 	  sprintf( msg, "Server will get file.");	  
@@ -137,7 +169,7 @@ int main ( int argc, char * argv[ ] ) {
 	  *buffer = '\0';
       *msg = '\0';
 	  fp = popen( "ls", "r" );
-	  ERROR ( fp == NULL );
+	  ERROR( fp == NULL );
 	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
 		newline = strchr( buffer, '\n'); // Find the newline
 		if ( newline != NULL ) *newline = ' '; // Overwrite
@@ -156,7 +188,7 @@ int main ( int argc, char * argv[ ] ) {
 	
 	// Send response
 	nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
-	ERROR ( nbytes < 0 );
+	ERROR( nbytes < 0 );
 	// printf( "Server sent %i bytes\n", nbytes);	
   } while ( !isQuit( buffer ) );  
   
