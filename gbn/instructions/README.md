@@ -1,5 +1,5 @@
-Programming Assignment 2 Go-Back N, Sliding Windows and Window-Based Flow Control
-=================================================================================
+Go-Back N, Sliding Windows and Window-Based Flow Control
+========================================================
 
 Due Friday, October 4th by 11:55 pm
 
