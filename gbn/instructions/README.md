@@ -122,7 +122,11 @@ Basically, the following server with the sliding window shown in the figure belo
 	a. If this packet is the next packet in the sequence then write/append this packet and any subsequent packets that had been received out of order. After writing packets increase the receiver’s window size.
 	b. If this packet is not the next packet in the sequence then buffer the packet until it can be written.
 	c. Once the last data packet is written then close the output file immediately. Also close the server log file. Then, terminate your server.You're done.
-3. server goes back to sleep LFRead is the last packet read by the application layer, LFRcvd is the last packet correctly received from the client, and LAF is the largest acceptable frame.
+3. server goes back to sleep 
+
+![Programming Assignment 2 - Figure 1: Server Explanation](PA2_Figure1.png)
+
+LFRead is the last packet read by the application layer, LFRcvd is the last packet correctly received from the client, and LAF is the largest acceptable frame.
 
 Grading
 -------
