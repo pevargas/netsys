@@ -43,7 +43,7 @@ Notes:
 
 ##What To Turn In:
 
-You should test your programs thoroughly so that they do not crash or hang. Your code must be organized and clear with comments/explanations for your functions and arguments. &nbsp;Please turn in one tar file containing two .c source files one readme.txt file and one Makefile. The Makefile must compile both client.c and server.c into their respective executables. &nbsp;The readme.txt file must explain what you have done and how to run it. The documentation does not have to be long, but does have to be very clear. &nbsp;&nbsp;The code that you turn in for this programming assignment must be your own original work and must compile and run on the CSEL machines. Upload the tar file containing the following files via the moodle.
+You should test your programs thoroughly so that they do not crash or hang. Your code must be organized and clear with comments/explanations for your functions and arguments.  Please turn in one tar file containing two .c source files one readme.txt file and one Makefile. The Makefile must compile both client.c and server.c into their respective executables.  The readme.txt file must explain what you have done and how to run it. The documentation does not have to be long, but does have to be very clear.  The code that you turn in for this programming assignment must be your own original work and must compile and run on the CSEL machines. Upload the tar file containing the following files via the moodle.
 
 *   Client file named **client.c**
 *   Server file named **server.c**
@@ -54,7 +54,7 @@ You should test your programs thoroughly so that they do not crash or hang. Your
 
 (Please read as this may answer some of your questions)
 
-Download the udp_example.tar file located on the Moodle. &nbsp;You can access the files from the main course page under the link ["Example tar file for Programming Assignment #1". ](http://moodle.cs.colorado.edu/mod/resource/view.php?id=3708)&nbsp;To extract files from udp_example.tar on a Linux machine, type 'tar -xvf udp_example.tar'. This should create a directory named “udp” which contains several files including “udp_client.c” and “udp_server.c” and testing files. These files contain a pseudo-code and not the actual implementation. You will have to modify both programs accordingly. After modifying the programs, following commands should be used to compile the programs.
+Download the udp_example.tar file located on the Moodle.  You can access the files from the main course page under the link ["Example tar file for Programming Assignment #1". ](udp_example.tar) To extract files from udp_example.tar on a Linux machine, type 'tar -xvf udp_example.tar'. This should create a directory named “udp” which contains several files including “udp_client.c” and “udp_server.c” and testing files. These files contain a pseudo-code and not the actual implementation. You will have to modify both programs accordingly. After modifying the programs, following commands should be used to compile the programs.
 
 To compile the files type:
 
@@ -66,7 +66,7 @@ To run the programs after compiling:
 *   Run the server by typing : ./server [port_number]
 *   Then run the client by typing : ./client [ip_address] [port_number]
 
-The IP address is the server's IP address. The port number is the server's port number. You are informing the client where the server is located. You can test your application locally by running both the client and the server on the same machine. In this case, you can type localhost in place of the IP address. &nbsp;Feel free to use these files as a baseline for your design. You will have to modify parts of the code, especially for the server where parsing of the message is required.
+The IP address is the server's IP address. The port number is the server's port number. You are informing the client where the server is located. You can test your application locally by running both the client and the server on the same machine. In this case, you can type localhost in place of the IP address.  Feel free to use these files as a baseline for your design. You will have to modify parts of the code, especially for the server where parsing of the message is required.
 
 ###Header Files:
 
@@ -98,9 +98,9 @@ fcntl(sockfd, F_SETFL, O_NONBLOCK). Do a man for fcntl for more information. It 
 
 **Using Man Pages**
 
-If you wish to read the man pages of any of the above functions, type man [function_name]. For example to check the man page of sendto, we will have to type man sendto. &nbsp;Press “q” in order to quit out of the man page.
+If you wish to read the man pages of any of the above functions, type man [function_name]. For example to check the man page of sendto, we will have to type man sendto.  Press “q” in order to quit out of the man page.
 
-Other useful C library methods to look up may be:&nbsp;atoi(),htons(),&nbsp;bzero(),bcopy(),&nbsp;strncmp(),strncpy(),&nbsp;fopen()
+Other useful C library methods to look up may be: atoi(),htons(), bzero(),bcopy(), strncmp(),strncpy(), fopen()
 
 **Creating a tar file**
 
@@ -108,7 +108,7 @@ To create a tar file go down one directory level "cd ..", and type "tar -cvf [fi
 
 **CSEL Machines**
 
-Your code must compile and execute on the machines in the CSEL Linux cluster. To create an account, go to [https://sac.colorado.edu](https://sac.colorado.edu/) (Select the host as CSEL and provide your CULoginName and Identity key password and "register.Then go to [http://csel.cs.colorado.edu](http://csel.cs.colorado.edu/) to login). &nbsp;You will be able to access your lab account via SSH from anywhere in the world (practically). &nbsp;If you have not previously used SSH, please follow the ITS Instructions here [http://oit.colorado.edu/ssh](http://oit.colorado.edu/ssh).
+Your code must compile and execute on the machines in the CSEL Linux cluster. To create an account, go to [https://sac.colorado.edu](https://sac.colorado.edu/) (Select the host as CSEL and provide your CULoginName and Identity key password and "register.Then go to [http://csel.cs.colorado.edu](http://csel.cs.colorado.edu/) to login). You will be able to access your lab account via SSH from anywhere in the world (practically).  If you have not previously used SSH, please follow the ITS Instructions here [http://oit.colorado.edu/ssh](http://oit.colorado.edu/ssh).
 
 For the Host Name (aka server) use one of the following (elra == educational labs remote access):
 
@@ -119,7 +119,7 @@ For the Host Name (aka server) use one of the following (elra == educational lab
 
 **External References:**
 
-Link to &nbsp;useful UNIX tutorial
+Link to  useful UNIX tutorial
 
 *   [http://www.tutorialspoint.com/unix/index.htm](http://www.tutorialspoint.com/unix/index.htm)
 
