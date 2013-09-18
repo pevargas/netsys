@@ -79,8 +79,9 @@ Command Line Requirements
 -------------------------
 
 The command­line usage of your programs should follow:
-	./GBNserver <server_port> <error_rate> <random_seed> <output_file> <receive_log>
-	./GBNclient <server_ip_address> <server_port> <error_rate> <random_seed> <send_file> <send_log>
+
+		./GBNserver <server_port> <error_rate> <random_seed> <output_file> <receive_log>
+		./GBNclient <server_ip_address> <server_port> <error_rate> <random_seed> <send_file> <send_log>
 
 Transfer Files
 --------------
@@ -93,11 +94,13 @@ Logs
 Log files are needed for both the client and server.
 
 At the client side, the format should be:
+
 	<Send | Resend | Receive> <Seq #> [Free Slots] <LAR> <LFS> <Time>
 
 Free Slots is only logged when the client receives an ACK with that information. LAR and LFS are pointers as defined in the textbook and lecture slides.
 
 The server's log format should be:
+
 	<Send | Resend | Receive> <Seq #> [Free Slots] <LFRead> <LFRcvd> <LAF> <Time>
 
 Free Slots is only logged when receiver is about to send an ACK. LFRead, LFRcvd, and LAF are pointers as defined in the figure and lecture slides.
@@ -119,9 +122,9 @@ Basically, the following server with the sliding window shown in the figure belo
 
 1. If the packet is within the receiver's window, move LFRcvd appropriately and adjust RWS appropriately. If the packet is outside of the receiver’s window then discard it.
 2. Next, decide how much to slide LFRead forward by, i.e. how much data will have been read by the application since the last time the server's GBN code woke up
-	a. If this packet is the next packet in the sequence then write/append this packet and any subsequent packets that had been received out of order. After writing packets increase the receiver’s window size.
-	b. If this packet is not the next packet in the sequence then buffer the packet until it can be written.
-	c. Once the last data packet is written then close the output file immediately. Also close the server log file. Then, terminate your server.You're done.
+	*  If this packet is the next packet in the sequence then write/append this packet and any subsequent packets that had been received out of order. After writing packets increase the receiver’s window size.
+	*  If this packet is not the next packet in the sequence then buffer the packet until it can be written.
+	*  Once the last data packet is written then close the output file immediately. Also close the server log file. Then, terminate your server.You're done.
 3. server goes back to sleep 
 
 ![Programming Assignment 2 - Figure 1: Server Explanation](PA2_Figure1.png)
@@ -179,7 +182,7 @@ After you've compiled your client application and your server application and li
 
 The code sendto_() function will drop packets at a certain probability of error. To set the sendto_() function's packet error rate, first read in the probability of packet of error from the command line argument. Next, call the init_net_lib() function and pass in the probability of packet error from the command line argument. Then, in the rest of your program, you can call sendto_(), which will now drop packets at the specified packet error rate.
 
-### Question II ### 
+### Question II ###
 
 **What should be the contents of the packet header?**
 
@@ -203,13 +206,13 @@ We recommend you judiciously apply select() when appropriate. Type 'man select' 
 
 Yes, you will need to call sendto_() to transmit both data (client­>server) and ACKs (server­>client). Your protocol must be robust enough to handle lost data as well as lost acknowledgements.
 
-### Question VI ### 
+### Question VI ###
 
 **How important is it that the server terminate cleanly, i.e. deals with the last ACK correctly?**
 
 For this assignment, please terminate your server cleanly. That means, after you receive the last packet of data for the file you are transferring, you should as usual slide the window forward and send a cumulative ACK. Then, you should immediately write all data to your output file and close the output file. You should also close any other open files, such as the server log file. As a final step, you should then immediately terminate your server.
 
-### Question  VII ### 
+### Question  VII ###
 
 **What should the client do if the last ACK is lost?**
 
@@ -223,7 +226,7 @@ You can include header bytes in the 1024 byte total, or you can add header bytes
 
 ### Question IX ###
 
-**Also, if the server only needs to send ACKs, does it need to pad a packet to be 1024 bytes? **
+**Also, if the server only needs to send ACKs, does it need to pad a packet to be 1024 bytes?**
 
 No, ACKs do not have to be 1024 bytes total or you can pad them to 1024 bytes. Document your choice in your README
 
