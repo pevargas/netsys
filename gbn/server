@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# ./GBNserver <server_port> <error rate> <random seed> <output_file> <recieve_log>
+echo ./GBNserver 5555 0 0 sout.txt slog.txt
+./GBNserver 5555 0 0 sout.txt slog.txt

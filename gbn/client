@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Get IP address
+ip=`hostname -i`
+
+# ./GBNclient <server_ip> <server_port> <error rate> <random seed> <send_file> <send_log>
+echo ./GBNclient $ip 5555 0 0 foo1 clog.txt
+./GBNclient $ip 5555 0 0 foo1 clog.txt
