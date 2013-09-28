@@ -9,7 +9,7 @@
 #------------------------------------------------------------------------------#
 CC     = gcc
 FLAGS  = -Wall
-REM    = $(wildcard GBNclient GBNserver *~ *_* *.tar)
+REM    = $(wildcard GBNclient GBNserver *~ *.tar)
 
 all: GBNclient GBNserver
 
