@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "sendto_.h"
+//#include "swp.h" // Contains funcs and strcuts for SWP
 
 #define PACKETSIZE 1024
 #define ERROR( boolean ) if ( boolean ) {\
@@ -35,14 +36,14 @@ int main(int argc, char *argv[]) {
   //
   // Variables
   //
-  int sd;                    // Socket
-  int nbytes;                // Number of bytes sent
-  unsigned int fromLen;
-  struct sockaddr_in remote; // Server
-  struct sockaddr_in fromAddr;
-  char msg[] = "send this";  // Packet to send
-  char recvmsg[ PACKETSIZE ];
-
+  int sd;                      // Socket
+  int nbytes;                  // Number of bytes sent/received
+  struct sockaddr_in remote;   // Server address
+  struct sockaddr_in fromAddr; // response address
+  unsigned int fromLen;        // Response length
+  char msg[ PACKETSIZE ];      // Packet to send
+  char recvmsg[ PACKETSIZE ];  // Response 
+  FILE *fp;                    // Pointer to file
 
   //
   // Check command line args
@@ -71,6 +72,14 @@ int main(int argc, char *argv[]) {
   printf( "%s: sending data to '%s:%s' \n", argv[0], argv[1], argv[2] );
 
   //
+  // Open file
+  //
+  fp = fopen( argv[5], "r" );
+  ERROR( fp == NULL );
+
+  fgets( msg, PACKETSIZE, fp );
+
+  //
   // Call sendto_ in order to simulate dropped packets
   //
   nbytes = sendto_( sd, msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
@@ -86,6 +95,9 @@ int main(int argc, char *argv[]) {
 
   printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
 
+  ERROR( fclose( fp ) );
+
   return EXIT_SUCCESS;
 }
 ////////////////////////////////////////////////////////////////////////////////
+
