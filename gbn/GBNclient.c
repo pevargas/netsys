@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "sendto_.h"
-//#include "swp.h" // Contains funcs and strcuts for SWP
 
 #define PACKETSIZE 1024
 #define ERROR( boolean ) if ( boolean ) {\

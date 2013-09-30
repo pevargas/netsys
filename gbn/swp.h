@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+0////////////////////////////////////////////////////////////////////////////////
 // File: swp.h                          Fall 2013
 // Students: 
 //   Brittney Harsha                    Patrick Vargas
@@ -7,11 +7,28 @@
 // Descriptoin:
 //   This file contains a few functions and data structures needed for a sliding
 //   window protocol program.
+//
+// JK GUYS,
+//   to run the code from the book we need the x-kernel installed, which we can't
+//   on the csel machines.
+//
+//   More info: www.cs.arizona.edu/projects/xkernel/
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef SWP_H
 #define SWP_H
+
+//#include <semaphore.h>
+
+#define PACKETSIZE 1024
+typedef char[PACKETSIZE] Msg;
+typedef int Semaphore;
+
+typedef int bool;
+#define TRUE 1
+#define FALSE 0
 
 // Sliding Window Protocol Metadata
 //   (pp. 111-112, L. Peterson & B. Davie. (2012). Computer Networks, 5 ed.)
