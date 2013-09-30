@@ -59,10 +59,11 @@ int main(int argc, char *argv[]) {
   unsigned int cliLen;
   int nbytes;
   char recvmsg[ PACKETSIZE ];
+  char buffer[ PACKETSIZE ];
   char response[ PACKETSIZE ] = "respond this";
-  char *log = argv[4];
+  char *log, *out;
   SwpHdr current;
-  FILE *fp;
+  FILE *logfp, *outfp;
   time_t rawtime;
   struct tm *timeinfo;
   char timebuff[ PACKETSIZE ];
@@ -74,6 +75,9 @@ int main(int argc, char *argv[]) {
     printf( "Usage: %s <server_port> <error rate> <random seed> <output_file> <recieve_log> \n", argv[0] );
     exit( EXIT_FAILURE );
   }
+  out = argv[4];
+  log = argv[5];
+
   //  printf( "Error rate : %f\n", atof( argv[2] ) );
 
   // Note: you must initialize the network library first before calling sendto_().
@@ -104,20 +108,28 @@ int main(int argc, char *argv[]) {
 
   printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
 
+
+  // Get Header Data
   current.SeqNum = recvmsg[0];
   current.AckNum = recvmsg[1];
   current.Flags  = recvmsg[2];
-
   
-  fp = fopen( log, "w" );
-  ERROR( fp < 0 );
+  // Open log and output file
+  logfp = fopen( log, "w" ); ERROR( logfp < 0 );
+  outfp = fopen( out, "w" ); ERROR( outfp < 0 );
 
+  // Get time
   time(&rawtime);
   timeinfo = localtime( &rawtime );
   strftime( timebuff, PACKETSIZE, "%I:%M%p", timeinfo );
-  
-  fprintf( fp, "Recieve %i %s\n", current.SeqNum, timebuff );
-  fclose( fp );
+
+  // Copy and write  recieved data
+  memcpy( buffer, recvmsg + 3, strlen(recvmsg) - 3 );
+  fprintf( outfp, "%s", buffer );
+  fprintf( logfp, "Recieve %i %s\n", current.SeqNum, timebuff );
+
+  // Close files
+  fclose( logfp ); fclose( outfp );
   
   //
   // Respond using sendto_ in order to simulate dropped packets
