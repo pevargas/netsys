@@ -21,6 +21,7 @@
 #include <sys/time.h> /* select() */
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 #include "sendto_.h"
 
 #define PACKETSIZE 1024
@@ -63,9 +64,12 @@ int main(int argc, char *argv[]) {
   unsigned int fromLen;        // Response length
   char msg[ PACKETSIZE ];      // Packet to send
   char recvmsg[ PACKETSIZE ];  // Response 
-  FILE *fp;                    // Pointer to file
+  FILE *in, *log;          // Pointer to file
   SwpState client;  
   SwpHdr current;
+  time_t rawtime;
+  struct tm *timeinfo;
+  char timebuff[ PACKETSIZE ];
 
   current.SeqNum = 'a';
   current.AckNum = 'b';
@@ -100,8 +104,8 @@ int main(int argc, char *argv[]) {
   //
   // Open file
   //
-  fp = fopen( argv[5], "r" );
-  ERROR( fp == NULL );
+  in = fopen( argv[5], "r" ); ERROR( in == NULL );
+  log = fopen( argv[6], "w" ); ERROR( log == NULL );
 
   //
   // Create frame
@@ -112,7 +116,7 @@ int main(int argc, char *argv[]) {
   msg[2] = current.Flags;
   // Set data
   do {
-	c = fgetc( fp );
+	c = fgetc( in );
 	msg[index++] = c;
   }
   while ( ( c != EOF ) && ( index < PACKETSIZE-1 ) );
@@ -124,6 +128,14 @@ int main(int argc, char *argv[]) {
   nbytes = sendto_( sd, msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
   ERROR( nbytes < 0 );
 
+  // Get time
+  time( &rawtime );
+  timeinfo = localtime( &rawtime );
+  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+
+  // Update log
+  fprintf( log, "SEND %i %s\n", current.SeqNum, timebuff );
+
   //
   // Receive message from server
   //
@@ -134,8 +146,17 @@ int main(int argc, char *argv[]) {
 
   printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
 
-  ERROR( fclose( fp ) );
+  // Get time
+  time( &rawtime );
+  timeinfo = localtime( &rawtime );
+  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
 
+  // Update log
+  fprintf( log, "RECEIVE %i %s\n", current.AckNum, timebuff );
+
+  // Close files
+  ERROR( fclose( in ) ); ERROR( fclose( log ) );
+ 
   return EXIT_SUCCESS;
 }
 ////////////////////////////////////////////////////////////////////////////////
