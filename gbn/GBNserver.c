@@ -27,6 +27,25 @@
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
   exit( EXIT_FAILURE );\
 }
+
+// Sliding Window Protocol Metadata modeled after pp. 111-112, L. Peterson & 
+//   B. Davie. (2012). Computer Networks, 5 ed.
+
+#define SWS 6 // Send Window Size
+#define RWS 6 // Recieve Window Size
+
+typedef u_char SwpSeqno; // sizeof() = 1
+typedef struct {
+  SwpSeqno SeqNum; // Sequence number of this frame
+  SwpSeqno AckNum; // Acknowledgement of recieved frame
+  u_char Flags;  // Flags
+} SwpHdr;
+
+typedef struct {
+  int LAR; // Sequence number of last ACK recieved
+  int LFS; // Last frame sent
+  SwpHdr hdr; // Pre-Initialized Header
+} SwpState;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +60,8 @@ int main(int argc, char *argv[]) {
   int nbytes;
   char recvmsg[ PACKETSIZE ];
   char response[ PACKETSIZE ] = "respond this";
+
+  SwpHdr current;
 
   //
   // Check command line args.
@@ -78,6 +99,12 @@ int main(int argc, char *argv[]) {
   ERROR( nbytes < 0 );
 
   printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
+
+  current.SeqNum = recvmsg[0];
+  current.AckNum = recvmsg[1];
+  current.Flags  = recvmsg[2];
+
+  printf("Recieve %i\n", current.SeqNum);
   
   //
   // Respond using sendto_ in order to simulate dropped packets

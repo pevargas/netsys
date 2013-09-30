@@ -28,6 +28,25 @@
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno) );\
   exit( EXIT_FAILURE );\
 }
+
+// Sliding Window Protocol Metadata modeled after pp. 111-112, L. Peterson & 
+//   B. Davie. (2012). Computer Networks, 5 ed.
+
+#define SWS 6 // Send Window Size
+#define RWS 6 // Recieve Window Size
+
+typedef u_char SwpSeqno; // sizeof() = 1
+typedef struct {
+  SwpSeqno SeqNum; // Sequence number of this frame
+  SwpSeqno AckNum; // Acknowledgement of recieved frame
+  u_char Flags;  // Flags
+} SwpHdr;
+
+typedef struct {
+  int LAR; // Sequence number of last ACK recieved
+  int LFS; // Last frame sent
+  SwpHdr hdr; // Pre-Initialized Header
+} SwpState;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,13 +56,21 @@ int main(int argc, char *argv[]) {
   //
   int sd;                      // Socket
   int nbytes;                  // Number of bytes sent/received
+  int index = 3;               // Index of file
+  char c;                      // Current character
   struct sockaddr_in remote;   // Server address
   struct sockaddr_in fromAddr; // response address
   unsigned int fromLen;        // Response length
   char msg[ PACKETSIZE ];      // Packet to send
   char recvmsg[ PACKETSIZE ];  // Response 
   FILE *fp;                    // Pointer to file
+  SwpState client;  
+  SwpHdr current;
 
+  current.SeqNum = 'a';
+  current.AckNum = 'b';
+  current.Flags  = 'c';
+  
   //
   // Check command line args
   //
@@ -76,7 +103,20 @@ int main(int argc, char *argv[]) {
   fp = fopen( argv[5], "r" );
   ERROR( fp == NULL );
 
-  fgets( msg, PACKETSIZE, fp );
+  //
+  // Create frame
+  //
+  // Set header
+  msg[0] = current.SeqNum;
+  msg[1] = current.AckNum;
+  msg[2] = current.Flags;
+  // Set data
+  do {
+	c = fgetc( fp );
+	msg[index++] = c;
+  }
+  while ( ( c != EOF ) && ( index < PACKETSIZE-1 ) );
+  msg[index] = '\0';
 
   //
   // Call sendto_ in order to simulate dropped packets
