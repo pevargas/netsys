@@ -60,8 +60,12 @@ int main(int argc, char *argv[]) {
   int nbytes;
   char recvmsg[ PACKETSIZE ];
   char response[ PACKETSIZE ] = "respond this";
-
+  char *log = argv[4];
   SwpHdr current;
+  FILE *fp;
+  time_t rawtime;
+  struct tm *timeinfo;
+  char timebuff[ PACKETSIZE ];
 
   //
   // Check command line args.
@@ -104,7 +108,16 @@ int main(int argc, char *argv[]) {
   current.AckNum = recvmsg[1];
   current.Flags  = recvmsg[2];
 
-  printf("Recieve %i\n", current.SeqNum);
+  
+  fp = fopen( log, "w" );
+  ERROR( fp < 0 );
+
+  time(&rawtime);
+  timeinfo = localtime( &rawtime );
+  strftime( timebuff, PACKETSIZE, "%I:%M%p", timeinfo );
+  
+  fprintf( fp, "Recieve %i %s\n", current.SeqNum, timebuff );
+  fclose( fp );
   
   //
   // Respond using sendto_ in order to simulate dropped packets
