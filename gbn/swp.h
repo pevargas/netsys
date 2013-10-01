@@ -16,6 +16,18 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+window = 0
+  while(c!=EOF)
+    while( window%sws < sws)
+	  do ... while  //build sws distinct packets with headers
+  }
+     i = window - sws
+     while(i<window)
+	   sendto_()    //for each distinct packet, can use i
+          i++
+		 }
+then we get into the ack stuff, which I am still working on so I will probably send you one or several more emails tonight if I can figure out the semaphore/select() business further.
+
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef SWP_H
 #define SWP_H

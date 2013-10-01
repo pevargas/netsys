@@ -47,37 +47,36 @@ typedef struct {
   int LAR; // Sequence number of last ACK recieved
   int LFS; // Last frame sent
   SwpHdr hdr; // Pre-Initialized Header
+  char window[SWS][PACKETSIZE]; // Window Buffer
 } SwpState;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
-  //
   // Variables
-  //
   int sd;                      // Socket
   int nbytes;                  // Number of bytes sent/received
-  int index = 3;               // Index of file
+  int index;                   // Index of file
+  int i;
   char c;                      // Current character
   struct sockaddr_in remote;   // Server address
   struct sockaddr_in fromAddr; // response address
   unsigned int fromLen;        // Response length
-  char msg[ PACKETSIZE ];      // Packet to send
-  char recvmsg[ PACKETSIZE ];  // Response 
-  FILE *in, *log;          // Pointer to file
+  char msg[PACKETSIZE];        // Packet to send
+  char recvmsg[PACKETSIZE];    // Response 
+  FILE *in, *log;              // Pointer to file
   SwpState client;  
   SwpHdr current;
   time_t rawtime;
   struct tm *timeinfo;
-  char timebuff[ PACKETSIZE ];
+  char timebuff[PACKETSIZE];
 
-  current.SeqNum = 'a';
-  current.AckNum = 'b';
-  current.Flags  = 'c';
+  // Set state
+  client.hdr.SeqNum = 0;
+  client.hdr.AckNum = 0;
+  client.hdr.Flags  = 0;
   
-  //
   // Check command line args
-  //
   if( argc < 7 ) {
     printf("Usage: %s <server_ip> <server_port> <error rate> <random seed> <send_file> <send_log> \n", argv[0]);
     exit( EXIT_FAILURE );
@@ -88,9 +87,7 @@ int main(int argc, char *argv[]) {
   init_net_lib( atof( argv[ 3 ] ), atoi( argv[4] ) );
   printf( "Error rate: %f\n", atof( argv[3] ) );
 
-  //
   // Socket creation
-  //
   sd = socket( AF_INET, SOCK_DGRAM, 0 );
   ERROR( sd < 0 );
 
@@ -101,59 +98,56 @@ int main(int argc, char *argv[]) {
   remote.sin_addr.s_addr = inet_addr( argv[1] ); //sets remote IP address
   printf( "%s: sending data to '%s:%s' \n", argv[0], argv[1], argv[2] );
 
-  //
   // Open file
-  //
   in = fopen( argv[5], "r" ); ERROR( in == NULL );
-  log = fopen( argv[6], "w" ); ERROR( log == NULL );
+  log = fopen( argv[6], "w" ); ERROR( log == NULL );  
 
-  //
-  // Create frame
-  //
   // Set header
   msg[0] = current.SeqNum;
   msg[1] = current.AckNum;
   msg[2] = current.Flags;
+  
+  // Start index counting at 3 since header takes 3 bytes
+  index = 3;
+  
   // Set data
   do {
 	c = fgetc( in );
-	msg[index++] = c;
+    msg[index++] = c;
   }
-  while ( ( c != EOF ) && ( index < PACKETSIZE-1 ) );
+  while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
+  
+  // End the content with null terminator
   msg[index] = '\0';
-
-  //
+  
   // Call sendto_ in order to simulate dropped packets
-  //
   nbytes = sendto_( sd, msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
   ERROR( nbytes < 0 );
-
+  
   // Get time
   time( &rawtime );
   timeinfo = localtime( &rawtime );
   strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-
+  
   // Update log
   fprintf( log, "SEND %i %s\n", current.SeqNum, timebuff );
-
-  //
+  
   // Receive message from server
-  //
   bzero( recvmsg, sizeof( recvmsg ) );
   fromLen = sizeof( fromAddr );
   nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
   ERROR( nbytes < 0 );
-
+  
   printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
-
+  
   // Get time
   time( &rawtime );
   timeinfo = localtime( &rawtime );
   strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-
+  
   // Update log
   fprintf( log, "RECEIVE %i %s\n", current.AckNum, timebuff );
-
+  	
   // Close files
   ERROR( fclose( in ) ); ERROR( fclose( log ) );
  

@@ -52,6 +52,9 @@ typedef struct {
 int main(int argc, char *argv[]) {
   // Variables
   int sd;                      // Our Socket
+  int i;
+  char c;
+  int index = 3;
   struct sockaddr_in servAddr; // Server Address
   struct sockaddr_in cliAddr;
   unsigned int cliLen;
@@ -90,15 +93,15 @@ int main(int argc, char *argv[]) {
   servAddr.sin_port        = htons( atoi( argv[1] ) ); // htons() sets the port # to network byte order
   servAddr.sin_addr.s_addr = INADDR_ANY;               // Supplies the IP address of the local machine
   ERROR( bind( sd, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
-  
+
   // Receive message from client
   bzero( recvmsg, sizeof( recvmsg ) );
   cliLen = sizeof( cliAddr );
   nbytes = recvfrom( sd, &recvmsg, sizeof( recvmsg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
   ERROR( nbytes < 0 );
-
+  
   printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
-
+  
   // Get Header Data
   current.SeqNum = recvmsg[0];
   current.AckNum = recvmsg[1];
@@ -108,27 +111,30 @@ int main(int argc, char *argv[]) {
   time( &rawtime );
   timeinfo = localtime( &rawtime );
   strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-
+  
   // Copy and write  recieved data
-  memcpy( buffer, recvmsg + 3, strlen(recvmsg) - 3 );
-  fprintf( out, "%s", buffer );
-
+  index = 3;
+  do {
+   	c = fputc( recvmsg[index++], out );
+  } while ( (c != '\0' || c != EOF) && index < PACKETSIZE - 3);
+  
   // Update log
   fprintf( log, "RECIEVE %i %s\n", current.AckNum, timebuff );
-
+  
   response[0] = current.SeqNum;
   response[1] = current.AckNum;
   response[2] = current.Flags; 
-
+  response[3] = '\0';
+  
   // Respond using sendto_ in order to simulate dropped packets
   nbytes = sendto_( sd, response, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
   ERROR( nbytes < 0 );
-
+  
   // Get time
   time( &rawtime );
   timeinfo = localtime( &rawtime );
   strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-
+  
   // Update log
   fprintf( log, "SEND %i %s\n", current.SeqNum, timebuff );
 
