@@ -42,14 +42,16 @@ typedef struct {
 } SwpHdr;
 
 typedef struct {
-  int LAR; // Sequence number of last ACK recieved
-  int LFS; // Last frame sent
-  SwpHdr hdr; // Pre-Initialized Header
+  SwpSeqno NFE;  // Sequence number of next frame expected
+  struct recvQ_slot {
+	int recieved; // Is msg valid?
+	char msg[PACKETSIZE];
+  } recvQ[RWS];
 } SwpState;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-int main(int argc, char *argv[]) {
+int main( int argc, char *argv[] ) {
   // Variables
   int sd;                      // Our Socket
   int i;
@@ -59,10 +61,9 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in cliAddr;
   unsigned int cliLen;
   int nbytes;
-  char recvmsg[ PACKETSIZE ];
-  char buffer[ PACKETSIZE ];
-  char response[ PACKETSIZE ];
-  SwpHdr current;
+  char ack[ 3 ];
+  SwpState server;
+
   FILE *log, *out;
   time_t rawtime;
   struct tm *timeinfo;
@@ -94,50 +95,50 @@ int main(int argc, char *argv[]) {
   servAddr.sin_addr.s_addr = INADDR_ANY;               // Supplies the IP address of the local machine
   ERROR( bind( sd, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
 
-  // Receive message from client
-  bzero( recvmsg, sizeof( recvmsg ) );
   cliLen = sizeof( cliAddr );
-  nbytes = recvfrom( sd, &recvmsg, sizeof( recvmsg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
-  ERROR( nbytes < 0 );
-  
-  printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
-  
-  // Get Header Data
-  current.SeqNum = recvmsg[0];
-  current.AckNum = recvmsg[1];
-  current.Flags  = recvmsg[2];
-  
-  // Get time
-  time( &rawtime );
-  timeinfo = localtime( &rawtime );
-  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-  
-  // Copy and write  recieved data
-  index = 3;
-  do {
-   	c = fputc( recvmsg[index++], out );
-  } while ( (c != '\0' || c != EOF) && index < PACKETSIZE - 3);
-  
-  // Update log
-  fprintf( log, "RECIEVE %i %s\n", current.AckNum, timebuff );
-  
-  response[0] = current.SeqNum;
-  response[1] = current.AckNum;
-  response[2] = current.Flags; 
-  response[3] = '\0';
-  
-  // Respond using sendto_ in order to simulate dropped packets
-  nbytes = sendto_( sd, response, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
-  ERROR( nbytes < 0 );
-  
-  // Get time
-  time( &rawtime );
-  timeinfo = localtime( &rawtime );
-  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-  
-  // Update log
-  fprintf( log, "SEND %i %s\n", current.SeqNum, timebuff );
 
+  //  for ( i = 0; i < SWS; ++i ) {
+  do {
+	// Receive message from client
+	nbytes = recvfrom( sd, &server.recvQ[0].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
+	ERROR( nbytes < 0 );
+	
+	// Make sure to cap string to not over shoot
+	server.recvQ[0].msg[nbytes] = '\0';
+
+	//printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
+	
+	// Get Header Data
+	ack[1] = server.recvQ[0].msg[0];
+	ack[2] = server.recvQ[0].msg[2];
+	
+	// Get time
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
+	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+	
+	// Copy and write recieved data
+	index = 3;
+	do {
+	  c = fputc( server.recvQ[0].msg[index++], out );
+	} while ( c != '\0' && index < PACKETSIZE - 3);
+	
+	// Update log
+	fprintf( log, "RECIEVE %i %s\n", server.recvQ[0].msg[1], timebuff );
+	
+	// Respond using sendto_ in order to simulate dropped packets
+	nbytes = sendto_( sd, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
+	ERROR( nbytes < 0 );
+	
+	// Get time
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
+	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+	
+	// Update log
+	fprintf( log, "SEND %i %s\n", ack[1], timebuff );
+  } while ( ack[2] ); 
+	
   // Close files
   fclose( log ); fclose( out );
 

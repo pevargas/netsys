@@ -47,7 +47,9 @@ typedef struct {
   int LAR; // Sequence number of last ACK recieved
   int LFS; // Last frame sent
   SwpHdr hdr; // Pre-Initialized Header
-  char window[SWS][PACKETSIZE]; // Window Buffer
+  struct sendQ_slot {
+	char msg[ PACKETSIZE ];
+  } sendQ[SWS];
 } SwpState;
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -102,52 +104,57 @@ int main(int argc, char *argv[]) {
   in = fopen( argv[5], "r" ); ERROR( in == NULL );
   log = fopen( argv[6], "w" ); ERROR( log == NULL );  
 
-  // Set header
-  msg[0] = current.SeqNum;
-  msg[1] = current.AckNum;
-  msg[2] = current.Flags;
-  
-  // Start index counting at 3 since header takes 3 bytes
-  index = 3;
-  
-  // Set data
+  //  for ( i = 0; i < SWS; ++i ) {
   do {
-	c = fgetc( in );
-    msg[index++] = c;
-  }
-  while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
-  
-  // End the content with null terminator
-  msg[index] = '\0';
-  
-  // Call sendto_ in order to simulate dropped packets
-  nbytes = sendto_( sd, msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
-  ERROR( nbytes < 0 );
-  
-  // Get time
-  time( &rawtime );
-  timeinfo = localtime( &rawtime );
-  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-  
-  // Update log
-  fprintf( log, "SEND %i %s\n", current.SeqNum, timebuff );
-  
-  // Receive message from server
-  bzero( recvmsg, sizeof( recvmsg ) );
-  fromLen = sizeof( fromAddr );
-  nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
-  ERROR( nbytes < 0 );
-  
-  printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
-  
-  // Get time
-  time( &rawtime );
-  timeinfo = localtime( &rawtime );
-  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-  
-  // Update log
-  fprintf( log, "RECEIVE %i %s\n", current.AckNum, timebuff );
-  	
+	
+	// Start index counting at 3 since header takes 3 bytes
+	index = 3;
+	
+	// Set data
+	do {
+	  c = fgetc( in );
+	  client.sendQ[0].msg[index++] = c;
+	}
+	while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
+	if ( c == EOF ) client.hdr.Flags = 1;
+	
+	// Set header
+	client.sendQ[0].msg[0] = client.hdr.SeqNum++;
+	client.sendQ[0].msg[1] = client.hdr.AckNum;
+	client.sendQ[0].msg[2] = client.hdr.Flags;
+
+	// End the content with null terminator
+	client.sendQ[0].msg[index] = '\0';
+	
+	// Call sendto_ in order to simulate dropped packets
+	nbytes = sendto_( sd, client.sendQ[0].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
+	ERROR( nbytes < 0 );
+	
+	// Get time
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
+	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+	
+	// Update log
+	fprintf( log, "SEND %i %s\n", client.hdr.SeqNum, timebuff );
+	
+	// Receive message from server
+	bzero( recvmsg, sizeof( recvmsg ) );
+	fromLen = sizeof( fromAddr );
+	nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
+	ERROR( nbytes < 0 );
+	
+	//printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
+	
+	// Get time
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
+	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+	
+	// Update log
+	fprintf( log, "RECEIVE %i %s\n", recvmsg[1], timebuff );
+  } while ( client.hdr.Flags );
+
   // Close files
   ERROR( fclose( in ) ); ERROR( fclose( log ) );
  
