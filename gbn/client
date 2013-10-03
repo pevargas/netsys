@@ -3,6 +3,13 @@
 # Get IP address
 ip=`hostname -i`
 
-# ./GBNclient <server_ip> <server_port> <error rate> <random seed> <send_file> <send_log>
-echo ./GBNclient $ip 5555 0 0 foo1 clog.txt
-./GBNclient $ip 5555 0 0 foo1 clog.txt
+# ./GBNclient <server_ip> <server_port> <error_rate> <random_seed> <send_file> <send_log>
+server_ip=$ip
+server_port=5555
+error_rate=0
+random_seed=0
+send_file=foo1
+send_log=clog.txt
+
+echo ./GBNclient $server_ip $server_port $error_rate $random_seed $send_file $send_log
+./GBNclient $server_ip $server_port $error_rate $random_seed $send_file $send_log
