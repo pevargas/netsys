@@ -65,16 +65,14 @@ int main(int argc, char *argv[]) {
   int sd;                      // Socket
   int nbytes;                  // Number of bytes sent/received
   int index;                   // Index of file
-  int i;
   char c;                      // Current character
   struct sockaddr_in remote;   // Server address
   struct sockaddr_in fromAddr; // response address
   unsigned int fromLen;        // Response length
-  char msg[PACKETSIZE];        // Packet to send
   char recvmsg[PACKETSIZE];    // Response 
   FILE *in, *log;              // Pointer to file
   SwpState client;  
-  SwpHdr current;
+
   // Set state
   client.LAR = 0;
   client.LFS = 0;
@@ -108,9 +106,7 @@ int main(int argc, char *argv[]) {
   in = fopen( argv[5], "r" ); ERROR( in == NULL );
   log = fopen( argv[6], "w" ); ERROR( log == NULL );  
 
-  //  for ( i = 0; i < SWS; ++i ) {
-  do {
-	
+  do {	
 	// Start index counting at 3 since header takes 3 bytes
 	index = 3;
 	

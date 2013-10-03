@@ -62,17 +62,16 @@ void logTime ( FILE * fp, char *msg, SwpState *ss );
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  int sd;                      // Our Socket
-  int i;
-  char c;
-  int index = 3;
-  struct sockaddr_in servAddr; // Server Address
-  struct sockaddr_in cliAddr;
-  unsigned int cliLen;
-  int nbytes;
-  char ack[ 3 ];
-  SwpState server;
-  FILE *log, *out;
+  char c;                                  // Character to write to our program
+  int sock;                                // Our Socket
+  int index = 3;                           // Index to get data from frame
+  struct sockaddr_in servAddr;             // Server Address
+  struct sockaddr_in cliAddr;              // Client Address
+  unsigned int cliLen = sizeof( cliAddr ); // Length of Client struct
+  int nbytes;                              // Number of bytes read
+  char ack[ 3 ];                           // Acknowledgment packet
+  SwpState server;                         // Window state
+  FILE *log, *out;                         // File pointers to log and output file
    
   // Check command line args.
   if( argc < 6 ) {
@@ -90,44 +89,40 @@ int main( int argc, char *argv[] ) {
   log = fopen( argv[5], "w" ); ERROR( log == NULL );
 
   // Socket creation
-  sd = socket( AF_INET, SOCK_DGRAM, 0 );
-  ERROR( sd < 0 );
+  sock = socket( AF_INET, SOCK_DGRAM, 0 );
+  ERROR( sock < 0 );
 
   // Bind server port to "well-known" port whose value is known by the client
   bzero( &servAddr, sizeof( servAddr ) );              // Zero the struct
   servAddr.sin_family      = AF_INET;                  // Address family
   servAddr.sin_port        = htons( atoi( argv[1] ) ); // htons() sets the port # to network byte order
   servAddr.sin_addr.s_addr = INADDR_ANY;               // Supplies the IP address of the local machine
-  ERROR( bind( sd, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
+  ERROR( bind( sock, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
 
-  cliLen = sizeof( cliAddr );
-
-  //  for ( i = 0; i < SWS; ++i ) {
   do {
 	// Receive message from client
-	nbytes = recvfrom( sd, &server.recvQ[0].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
+	nbytes = recvfrom( sock, &server.recvQ[0].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
 	ERROR( nbytes < 0 );
-	
-	// Make sure to cap string to not over shoot
-	server.recvQ[0].msg[nbytes] = '\0';
 
-	//printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
-	
 	// Get Header Data
 	ack[1] = server.recvQ[0].msg[0];
 	ack[2] = server.recvQ[0].msg[2];
 	
+	// Make sure to cap string to not over shoot
+	server.recvQ[0].msg[nbytes] = '\0';
+
 	// Update log
 	logTime( log, "RECIEVE", &server );
+
+	//printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
 	
 	// Copy and write recieved data
 	index = 3;
-	do {
-	  c = fputc( server.recvQ[0].msg[index++], out );
-	} while ( c != '\0' && index < PACKETSIZE - 3);
+	do c = fputc( server.recvQ[0].msg[index++], out );
+	while ( c != '\0' && index < PACKETSIZE - 3);
 		
 	// Respond using sendto_ in order to simulate dropped packets
-	nbytes = sendto_( sd, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
+	nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
 	ERROR( nbytes < 0 );
 	
 	// Update log
@@ -148,7 +143,7 @@ int main( int argc, char *argv[] ) {
 void logTime ( FILE * fp, char *msg, SwpState *ss ) {
   time_t rawtime;
   struct tm *timeinfo;
-  char timebuff[ PACKETSIZE ];
+  char timebuff[32];
    
   // Get time
   time( &rawtime );
