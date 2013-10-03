@@ -10,5 +10,7 @@ else
 	echo "Diff Success"
 fi
 
+wc foo1 sout.txt
+
 echo "<========= Log Comparision  =========>"
 tail *log.txt
