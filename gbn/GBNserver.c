@@ -128,7 +128,7 @@ int main( int argc, char *argv[] ) {
 	// Update log
 	logTime( log, "SEND", &server );
 
-  } while ( ack[2] ); 
+  } while ( ack[2] != 1 ); 
 	
   // Close files
   fclose( log ); fclose( out );

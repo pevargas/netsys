@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 	
 	logTime ( log, "RECEIVE", &client );
 
-  } while ( client.hdr.Flags );
+  } while ( client.hdr.Flags != 1 );
 
   // Close files
   ERROR( fclose( in ) ); ERROR( fclose( log ) );
