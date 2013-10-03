@@ -119,8 +119,8 @@ int main( int argc, char *argv[] ) {
 	// Copy and write recieved data
 	index = 3;
 	do c = fputc( server.recvQ[0].msg[index++], out );
-	while ( c != '\0' && index < PACKETSIZE - 3);
-		
+	while ( c != '\0' && index < PACKETSIZE - 1 );
+
 	// Respond using sendto_ in order to simulate dropped packets
 	nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
 	ERROR( nbytes < 0 );
@@ -129,6 +129,8 @@ int main( int argc, char *argv[] ) {
 	logTime( log, "SEND", &server );
 
   } while ( ack[2] != 1 ); 
+
+  //  fprintf( out, "\n\0" );
 	
   // Close files
   fclose( log ); fclose( out );
