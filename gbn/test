@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Quick Test Script
+echo "<========= File Comparision =========>"
+diff=`diff foo1 sout.txt | wc -c`
+
+if [ $diff > 0 ]; then
+	echo "Diff Failure"
+else
+	echo "Diff Success"
+fi
+
+echo "<========= Log Comparision  =========>"
+tail *log.txt
