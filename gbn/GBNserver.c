@@ -34,18 +34,19 @@
 #define SWS 6 // Send Window Size
 #define RWS 6 // Recieve Window Size
 
+enum SEGMENT { SEQNUM, FLAGS };
+
 typedef u_char SwpSeqno; // sizeof() = 1
 typedef struct {
-  SwpSeqno SeqNum; // Sequence number of this frame
-  SwpSeqno AckNum; // Acknowledgement of recieved frame
-  u_char Flags;  // Flags
+  SwpSeqno SeqNum; // Sequence of Ack number of this frame
+  u_char Flags;    // Flags
 } SwpHdr;
 
 typedef struct {
   SwpSeqno NFE;    // Sequence number of next frame expected
   SwpSeqno LFRead; // Last Frame Read
   SwpSeqno LFRcvd; // Last Frame Recieved
-  SwpSeqno LAF;    // Last Ack F
+  SwpSeqno LAF;    // Largest Acceptable Frame
   SwpHdr hdr;   // Pre-Initialized Header
   struct recvQ_slot {
 	int recieved; // Is msg valid?
@@ -64,12 +65,12 @@ int main( int argc, char *argv[] ) {
   // Variables
   char c;                                  // Character to write to our program
   int sock;                                // Our Socket
-  int index = 3;                           // Index to get data from frame
+  int index;                               // Index to get data from frame
   struct sockaddr_in servAddr;             // Server Address
   struct sockaddr_in cliAddr;              // Client Address
   unsigned int cliLen = sizeof( cliAddr ); // Length of Client struct
   int nbytes;                              // Number of bytes read
-  char ack[ 3 ];                           // Acknowledgment packet
+  char ack[2];                             // Acknowledgment packet
   SwpState server;                         // Window state
   FILE *log, *out;                         // File pointers to log and output file
    
@@ -104,20 +105,20 @@ int main( int argc, char *argv[] ) {
 	nbytes = recvfrom( sock, &server.recvQ[0].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
 	ERROR( nbytes < 0 );
 
-	// Get Header Data
-	ack[1] = server.recvQ[0].msg[0];
-	ack[2] = server.recvQ[0].msg[2];
-	
-	// Make sure to cap string to not over shoot
-	server.recvQ[0].msg[nbytes] = '\0';
-
 	// Update log
 	logTime( log, "RECIEVE", &server );
 
-	//printf( "Client(%s:%d): %s\n", inet_ntoa( cliAddr.sin_addr ), ntohs( cliAddr.sin_port), recvmsg );
+	// Get Header Data
+	ack[SEQNUM] = server.recvQ[0].msg[SEQNUM];
+	ack[FLAGS] = server.recvQ[0].msg[FLAGS];
+	server.LFRcvd = ack[SEQNUM]; // Last Frame Recieved
+	server.NFE = ack[SEQNUM] + 1; // Next Frame Expected
+	
+	// Make sure to cap string to not over shoot
+	server.recvQ[0].msg[nbytes] = '\0';
 	
 	// Copy and write recieved data
-	index = 3;
+	index = 2;
 	do c = fputc( server.recvQ[0].msg[index++], out );
 	while ( c != '\0' && index < PACKETSIZE - 1 );
 
@@ -128,10 +129,8 @@ int main( int argc, char *argv[] ) {
 	// Update log
 	logTime( log, "SEND", &server );
 
-  } while ( ack[2] != 1 ); 
+  } while ( ack[FLAGS] != 1 ); 
 
-  //  fprintf( out, "\n\0" );
-	
   // Close files
   fclose( log ); fclose( out );
 

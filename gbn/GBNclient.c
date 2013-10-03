@@ -37,10 +37,11 @@
 #define SWS 6 // Send Window Size
 #define RWS 6 // Recieve Window Size
 
+enum SEGMENT { SEQNUM, FLAGS };
+
 typedef u_char SwpSeqno; // sizeof() = 1
 typedef struct {
-  SwpSeqno SeqNum; // Sequence number of this frame
-  SwpSeqno AckNum; // Acknowledgement of recieved frame
+  SwpSeqno SeqNum; // Sequence or Ack number of this frame.
   u_char Flags;  // Flags
 } SwpHdr;
 
@@ -77,7 +78,6 @@ int main(int argc, char *argv[]) {
   client.LAR = 0;
   client.LFS = 0;
   client.hdr.SeqNum = 0;
-  client.hdr.AckNum = 0;
   client.hdr.Flags  = 0;
   
   // Check command line args
@@ -107,8 +107,8 @@ int main(int argc, char *argv[]) {
   log = fopen( argv[6], "w" ); ERROR( log == NULL );  
 
   do {	
-	// Start index counting at 3 since header takes 3 bytes
-	index = 3;
+	// Start index counting at 2 since header takes 2 bytes
+	index = 2;
 	
 	// Set data
 	do {
@@ -119,9 +119,8 @@ int main(int argc, char *argv[]) {
 	if ( c == EOF ) client.hdr.Flags = 1;
 	
 	// Set header
-	client.sendQ[0].msg[0] = client.hdr.SeqNum++;
-	client.sendQ[0].msg[1] = client.hdr.AckNum;
-	client.sendQ[0].msg[2] = client.hdr.Flags;
+	client.sendQ[0].msg[SEQNUM] = client.LFS = client.hdr.SeqNum;
+	client.sendQ[0].msg[FLAGS] = client.hdr.Flags;
 
 	// End the content with null terminator
 	client.sendQ[0].msg[index] = '\0';
@@ -138,10 +137,14 @@ int main(int argc, char *argv[]) {
 	fromLen = sizeof( fromAddr );
 	nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
 	ERROR( nbytes < 0 );
-	
-	//printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
+
+	// Set Last Ack Recieved
+	client.LAR = recvmsg[SEQNUM];
 	
 	logTime ( log, "RECEIVE", &client );
+
+	// Increment Sequence Counter
+	client.hdr.SeqNum++;
 
   } while ( client.hdr.Flags != 1 );
 
