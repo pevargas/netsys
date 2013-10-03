@@ -42,12 +42,21 @@ typedef struct {
 } SwpHdr;
 
 typedef struct {
-  SwpSeqno NFE;  // Sequence number of next frame expected
+  SwpSeqno NFE;    // Sequence number of next frame expected
+  SwpSeqno LFRead; // Last Frame Read
+  SwpSeqno LFRcvd; // Last Frame Recieved
+  SwpSeqno LAF;    // Last Ack F
+  SwpHdr hdr;   // Pre-Initialized Header
   struct recvQ_slot {
 	int recieved; // Is msg valid?
 	char msg[PACKETSIZE];
   } recvQ[RWS];
 } SwpState;
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Server Side Log
+void logTime ( FILE * fp, char *msg, SwpState *ss );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,11 +72,7 @@ int main( int argc, char *argv[] ) {
   int nbytes;
   char ack[ 3 ];
   SwpState server;
-
   FILE *log, *out;
-  time_t rawtime;
-  struct tm *timeinfo;
-  char timebuff[ PACKETSIZE ];
    
   // Check command line args.
   if( argc < 6 ) {
@@ -112,36 +117,46 @@ int main( int argc, char *argv[] ) {
 	ack[1] = server.recvQ[0].msg[0];
 	ack[2] = server.recvQ[0].msg[2];
 	
-	// Get time
-	time( &rawtime );
-	timeinfo = localtime( &rawtime );
-	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+	// Update log
+	logTime( log, "RECIEVE", &server );
 	
 	// Copy and write recieved data
 	index = 3;
 	do {
 	  c = fputc( server.recvQ[0].msg[index++], out );
 	} while ( c != '\0' && index < PACKETSIZE - 3);
-	
-	// Update log
-	fprintf( log, "RECIEVE %i %s\n", server.recvQ[0].msg[1], timebuff );
-	
+		
 	// Respond using sendto_ in order to simulate dropped packets
 	nbytes = sendto_( sd, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
 	ERROR( nbytes < 0 );
 	
-	// Get time
-	time( &rawtime );
-	timeinfo = localtime( &rawtime );
-	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-	
 	// Update log
-	fprintf( log, "SEND %i %s\n", ack[1], timebuff );
+	logTime( log, "SEND", &server );
+
   } while ( ack[2] ); 
 	
   // Close files
   fclose( log ); fclose( out );
 
   return EXIT_SUCCESS;
+}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Server Side Log
+// <Send | Resend | Receive> <Seq #> [Free Slots] <LFRead> <LFRcvd> <LAF> <Time>
+void logTime ( FILE * fp, char *msg, SwpState *ss ) {
+  time_t rawtime;
+  struct tm *timeinfo;
+  char timebuff[ PACKETSIZE ];
+   
+  // Get time
+  time( &rawtime );
+  timeinfo = localtime( &rawtime );
+  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+  
+  // Update log
+  fprintf( fp, "%8s | SEQ %3i | LFRead %3i | LFRcvd %3i | LAF %3i | %s\n", 
+		   msg, ss->hdr.SeqNum, ss->LFRead, ss->LFRcvd, ss->LAF, timebuff );
 }
 ////////////////////////////////////////////////////////////////////////////////

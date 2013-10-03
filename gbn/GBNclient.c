@@ -25,6 +25,7 @@
 #include "sendto_.h"
 
 #define PACKETSIZE 1024
+#define SMALLSIZE  32
 #define ERROR( boolean ) if ( boolean ) {\
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno) );\
   exit( EXIT_FAILURE );\
@@ -44,13 +45,18 @@ typedef struct {
 } SwpHdr;
 
 typedef struct {
-  int LAR; // Sequence number of last ACK recieved
-  int LFS; // Last frame sent
-  SwpHdr hdr; // Pre-Initialized Header
+  SwpSeqno LAR; // Sequence number of last ACK recieved
+  SwpSeqno LFS; // Last frame sent
+  SwpHdr hdr;   // Pre-Initialized Header
   struct sendQ_slot {
 	char msg[ PACKETSIZE ];
   } sendQ[SWS];
 } SwpState;
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Client Side Log
+void logTime ( FILE * fp, char *msg, SwpState *ss );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,11 +75,9 @@ int main(int argc, char *argv[]) {
   FILE *in, *log;              // Pointer to file
   SwpState client;  
   SwpHdr current;
-  time_t rawtime;
-  struct tm *timeinfo;
-  char timebuff[PACKETSIZE];
-
   // Set state
+  client.LAR = 0;
+  client.LFS = 0;
   client.hdr.SeqNum = 0;
   client.hdr.AckNum = 0;
   client.hdr.Flags  = 0;
@@ -130,13 +134,8 @@ int main(int argc, char *argv[]) {
 	nbytes = sendto_( sd, client.sendQ[0].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 	ERROR( nbytes < 0 );
 	
-	// Get time
-	time( &rawtime );
-	timeinfo = localtime( &rawtime );
-	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-	
 	// Update log
-	fprintf( log, "SEND %i %s\n", client.hdr.SeqNum, timebuff );
+	logTime ( log, "SEND", &client );
 	
 	// Receive message from server
 	bzero( recvmsg, sizeof( recvmsg ) );
@@ -146,13 +145,8 @@ int main(int argc, char *argv[]) {
 	
 	//printf( "Server(%s:%d): %s\n", inet_ntoa( fromAddr.sin_addr ), ntohs( fromAddr.sin_port), recvmsg );
 	
-	// Get time
-	time( &rawtime );
-	timeinfo = localtime( &rawtime );
-	strftime( timebuff, PACKETSIZE, "%r", timeinfo );
-	
-	// Update log
-	fprintf( log, "RECEIVE %i %s\n", recvmsg[1], timebuff );
+	logTime ( log, "RECEIVE", &client );
+
   } while ( client.hdr.Flags );
 
   // Close files
@@ -162,3 +156,21 @@ int main(int argc, char *argv[]) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Client Side Send
+// <Send | Resend | Receive> <Seq #> [Free Slots] <LAR> <LFS> <Time>
+void logTime ( FILE * fp, char *msg, SwpState *ss ) {
+  time_t rawtime;
+  struct tm *timeinfo;
+  char timebuff[ PACKETSIZE ];
+   
+  // Get time
+  time( &rawtime );
+  timeinfo = localtime( &rawtime );
+  strftime( timebuff, PACKETSIZE, "%r", timeinfo );
+  
+  // Update log
+  fprintf( fp, "%8s | SEQ %3i | LAR %3i | LFS %3i | %s\n", 
+		   msg, ss->hdr.SeqNum, ss->LAR, ss->LFS, timebuff );
+}
+////////////////////////////////////////////////////////////////////////////////
