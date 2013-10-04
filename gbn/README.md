@@ -13,6 +13,7 @@ The purpose of this program is to transfer a file from the client to the server.
 Group
 -----
 **Brittney Harsha**
+
 [b.grace.harsha@gmail.com][e1]
 
 **Patrick E. Vargas**
@@ -75,12 +76,13 @@ This assignment is based on the files given by Professor Han, CSCI 4273: Network
 Which of the following functions work
 -------------------------------------
 
-	[ ] reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
-	[ ] sliding windows at both the client and server, with cumulative acknowledgements
-	[ ] timeouts with retransmission
-	[ ] discarding of out­of­range packets
-	[ ] buffering out­of­order packets
+- [] Reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
+- [] Sliding windows at both the client and server, with cumulative acknowledgements
+- [] Timeouts with retransmission
+- [] Discarding of out­of­range packets
+- [] Buffering out­of­order packets
+
 
   [w]: http://www.vargascorpus.com/
   [e2]: mailto:patrick.vargas@colorado.edu
-  [e2]: mailto:b.grace.harsha@gmail.com
+  [e1]: mailto:b.grace.harsha@gmail.com
