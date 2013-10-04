@@ -108,43 +108,55 @@ int main(int argc, char *argv[]) {
 
   do {	
 	// Start index counting at 2 since header takes 2 bytes
-	index = 2;
-	
-	// Set data
-	do {
-	  c = fgetc( in );
-	  client.sendQ[0].msg[index++] = c;
-	}
-	while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
-	if ( c == EOF ) client.hdr.Flags = 1;
-	
-	// Set header
-	client.sendQ[0].msg[SEQNUM] = client.LFS = client.hdr.SeqNum;
-	client.sendQ[0].msg[FLAGS] = client.hdr.Flags;
 
-	// End the content with null terminator
-	client.sendQ[0].msg[index] = '\0';
+	int n = 0;
+	int i = 0;
+	while(n < SWS)
+	  {
+	    index = 2;
+	    // Set data
+	    do {
+	      c = fgetc( in );
+	      client.sendQ[n%SWS].msg[index++] = c;
+	    }
+	    while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
+	    if ( c == EOF ) client.hdr.Flags = 1;
 	
-	// Call sendto_ in order to simulate dropped packets
-	nbytes = sendto_( sd, client.sendQ[0].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
+	    // Set header
+	    client.sendQ[n%SWS].msg[SEQNUM] = client.LFS = client.hdr.SeqNum;
+	    client.sendQ[n%SWS].msg[FLAGS] = client.hdr.Flags;
+
+	    // End the content with null terminator
+	    client.sendQ[n%SWS].msg[index] = '\0';
+	    n++;
+	    // Increment Sequence Counter
+	    client.hdr.SeqNum++;
+	  }
+	while(i < SWS)
+	  {
+	    // Call sendto_ in order to simulate dropped packets
+	    nbytes = sendto_( sd, client.sendQ[i%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 	ERROR( nbytes < 0 );
 	
 	// Update log
 	logTime ( log, "SEND", &client );
-	
-	// Receive message from server
-	bzero( recvmsg, sizeof( recvmsg ) );
-	fromLen = sizeof( fromAddr );
-	nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
-	ERROR( nbytes < 0 );
+	i++;
+	  }
+	int t = 0;
+	while(t < SWS)
+	  {
+	    // Receive message from server
+	    bzero( recvmsg, sizeof( recvmsg ) );
+	    fromLen = sizeof( fromAddr );
+	    nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
+	    ERROR( nbytes < 0 );
 
-	// Set Last Ack Recieved
-	client.LAR = recvmsg[SEQNUM];
+	    // Set Last Ack Recieved
+	    client.LAR = recvmsg[SEQNUM];
 	
-	logTime ( log, "RECEIVE", &client );
-
-	// Increment Sequence Counter
-	client.hdr.SeqNum++;
+	    logTime ( log, "RECEIVE", &client );
+	    ++t;
+	  }
 
   } while ( client.hdr.Flags != 1 );
 

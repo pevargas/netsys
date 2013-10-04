@@ -101,25 +101,28 @@ int main( int argc, char *argv[] ) {
   ERROR( bind( sock, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
 
   do {
+    int i = 0;
+    while(i < RWS)
+      {
 	// Receive message from client
-	nbytes = recvfrom( sock, &server.recvQ[0].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
+	nbytes = recvfrom( sock, &server.recvQ[i%RWS].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
 	ERROR( nbytes < 0 );
 
 	// Update log
 	logTime( log, "RECIEVE", &server );
 
 	// Get Header Data
-	ack[SEQNUM] = server.recvQ[0].msg[SEQNUM];
-	ack[FLAGS] = server.recvQ[0].msg[FLAGS];
+	ack[SEQNUM] = server.recvQ[i%RWS].msg[SEQNUM];
+	ack[FLAGS] = server.recvQ[i%RWS].msg[FLAGS];
 	server.LFRcvd = ack[SEQNUM]; // Last Frame Recieved
 	server.NFE = ack[SEQNUM] + 1; // Next Frame Expected
 	
 	// Make sure to cap string to not over shoot
-	server.recvQ[0].msg[nbytes] = '\0';
+	server.recvQ[i%RWS].msg[nbytes] = '\0';
 	
 	// Copy and write recieved data
 	index = 2;
-	do c = fputc( server.recvQ[0].msg[index++], out );
+	do c = fputc( server.recvQ[i%RWS].msg[index++], out );
 	while ( c != '\0' && index < PACKETSIZE - 1 );
 
 	// Respond using sendto_ in order to simulate dropped packets
@@ -128,7 +131,8 @@ int main( int argc, char *argv[] ) {
 	
 	// Update log
 	logTime( log, "SEND", &server );
-
+	i++;
+      }
   } while ( ack[FLAGS] != 1 ); 
 
   // Close files
