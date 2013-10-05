@@ -35,7 +35,6 @@
 //   B. Davie. (2012). Computer Networks, 5 ed.
 
 #define SWS 6 // Send Window Size
-#define RWS 6 // Recieve Window Size
 
 enum SEGMENT { SEQNUM, FLAGS };
 
@@ -46,8 +45,8 @@ typedef struct {
 } SwpHdr;
 
 typedef struct {
-  SwpSeqno LAR; // Sequence number of last ACK recieved
-  SwpSeqno LFS; // Last frame sent
+  SwpSeqno LAR; // Last Ack recieved
+  SwpSeqno LFS; // Last Frame Sent
   SwpHdr hdr;   // Pre-Initialized Header
   struct sendQ_slot {
 	char msg[ PACKETSIZE ];
@@ -73,7 +72,6 @@ int main(int argc, char *argv[]) {
   char recvmsg[PACKETSIZE];    // Response 
   FILE *in, *log;              // Pointer to file
   SwpState client;
-  SwpState state; 
  
   // Set state
   client.LAR = 0;
@@ -107,51 +105,56 @@ int main(int argc, char *argv[]) {
   in = fopen( argv[5], "r" ); ERROR( in == NULL );
   log = fopen( argv[6], "w" ); ERROR( log == NULL );  
 
+  // Initialize sendQ Semaphore
+  int sendQ = 0;
+
   do {	
-	// Start index counting at 2 since header takes 2 bytes
-	int n = 0;
-	int i = 0;
-	
-	// Read from File Loop
-	while(n < SWS) {
+	// Build Loop
+	if ( sendQ < SWS ) {
+	  // Start index counting at 2 since header takes 2 bytes
 	  index = 2;
 	  // Set data
 	  do {
 		c = fgetc( in );
-		client.sendQ[n%SWS].msg[index++] = c;
+		client.sendQ[client.hdr.SeqNum % SWS].msg[index++] = c;
 	  }
 	  while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
 	  if ( c == EOF ) client.hdr.Flags = 1;
 	  
 	  // Set header
-	  client.sendQ[n%SWS].msg[SEQNUM] = client.hdr.SeqNum + n;
-	  client.sendQ[n%SWS].msg[FLAGS] = client.hdr.Flags;
+	  client.sendQ[client.hdr.SeqNum % SWS].msg[SEQNUM] = client.hdr.SeqNum;
+	  client.sendQ[client.hdr.SeqNum % SWS].msg[FLAGS] = client.hdr.Flags;
 	  
 	  // End the content with null terminator
-	  client.sendQ[n%SWS].msg[index] = '\0';
-	  n++;
-	
+	  client.sendQ[client.hdr.SeqNum % SWS].msg[index] = '\0';
+	  	
 	  // Update log
 	  logTime ( log, "BUILD", &client );	  
-	}
+	  //	}
 
-	// Send packets to server loop
-	while(i < SWS) {
+	// We'll set a flag for when we don't recieve acks
+	//   and resend our current window sometime around here
+
+	// Send Packet Loop
+	//	if ( client.LAR == client.LFS ) {
 	  // Call sendto_ in order to simulate dropped packets
-	  nbytes = sendto_( sd, client.sendQ[i%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
+	  nbytes = sendto_( sd, client.sendQ[client.hdr.SeqNum % SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 	  ERROR( nbytes < 0 );
-
-	  // Increment Sequence Counter
+	  
+	  // Set Last Frame Sent to current Sequence Number
 	  client.LFS = client.hdr.SeqNum;
-	
+	  
 	  // Update log
 	  logTime ( log, "SEND", &client );
-	  client.hdr.SeqNum++; i++;
+	  
+	  // Increment Sequence Counter	
+	  client.hdr.SeqNum++;
+	  // Increment sendQ Semaphore
+	  sendQ++;
 	}
-	
-	// Receive Acks from Server Loop
-	int t = 0;
-	while(t < SWS) {
+
+	// Receive Acks Loop
+	if ( sendQ >= 0 ) {
 	  // Receive message from server
 	  bzero( recvmsg, sizeof( recvmsg ) );
 	  fromLen = sizeof( fromAddr );
@@ -161,7 +164,8 @@ int main(int argc, char *argv[]) {
 	  // Set Last Ack Recieved
 	  client.LAR = recvmsg[SEQNUM];
 	  logTime ( log, "RECEIVE", &client );
-	  ++t;
+	  // Decrement sendQ semaphore
+	  sendQ--;
 	}	
   } while ( client.hdr.Flags != 1 );
   
@@ -187,6 +191,8 @@ void logTime ( FILE * fp, char *msg, SwpState *ss ) {
   
   // Update log
   fprintf( fp, "%8s | SEQ %3i | LAR %3i | LFS %3i | %s\n", 
+		   msg, ss->hdr.SeqNum, ss->LAR, ss->LFS, timebuff );
+  printf( "Client: %8s | SEQ %3i | LAR %3i | LFS %3i | %s\n", 
 		   msg, ss->hdr.SeqNum, ss->LAR, ss->LFS, timebuff );
 }
 ////////////////////////////////////////////////////////////////////////////////
