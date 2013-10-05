@@ -34,7 +34,7 @@
 // Sliding Window Protocol Metadata modeled after pp. 111-112, L. Peterson & 
 //   B. Davie. (2012). Computer Networks, 5 ed.
 
-#define SWS 9 // Send Window Size
+#define SWS 6 // Send Window Size
 
 enum SEGMENT { SEQNUM, FLAGS };
 
@@ -115,12 +115,9 @@ int main(int argc, char *argv[]) {
   tv.tv_sec = 0.005;
   tv.tv_usec = 0;
   
-  // Initialize sendQ Semaphore
-  int sendQ = 0;
-
   do {	
-	// Build Loop
-	if ( sendQ < SWS ) {
+	// Build Packets
+	if ( client.LFS - client.LAR < SWS ) {
 	  // Start index counting at 2 since header takes 2 bytes
 	  index = 2;
 	  // Set data
@@ -138,9 +135,6 @@ int main(int argc, char *argv[]) {
 	  // End the content with null terminator
 	  client.sendQ[client.hdr.SeqNum % SWS].msg[index] = '\0';
 	  	
-	  // Update log
-	  logTime ( log, "BUILD", &client );	  
-	  
 	  // Call sendto_ in order to simulate dropped packets
 	  nbytes = sendto_( sd, client.sendQ[client.hdr.SeqNum % SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 	  ERROR( nbytes < 0 );
@@ -153,45 +147,39 @@ int main(int argc, char *argv[]) {
 	  
 	  // Increment Sequence Counter	
 	  client.hdr.SeqNum++;
-	  // Increment sendQ Semaphore
-	  sendQ++;
-	}
+ 	}
 
-	// We'll set a flag for when we don't recieve acks
-	//   and resend our current window sometime around here
-	if ( retval == 0 ) {
+	// Receive message from server
+	bzero( recvmsg, sizeof( recvmsg ) );
+	fromLen = sizeof( fromAddr );
+	
+	retval = select( sd + 1, &rfds, NULL, NULL, &tv );
+	ERROR( retval < 0 );
+	
+	if ( retval ) {
+	  nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
+	  ERROR( nbytes < 0 );
+	  
+	  if ( client.LAR + 1 == recvmsg[SEQNUM] ) {
+		// Set Last Ack Recieved
+		client.LAR = recvmsg[SEQNUM];
+	  }
+	  
+	  logTime ( log, "RECEIVE", &client );
+	}
+	// Timedout
+	else {	
 	  int i = client.LAR;
 	  for ( ; i < client.LAR + SWS; ++i ) {
 		// Call sendto_ in order to simulate dropped packets
 		nbytes = sendto_( sd, client.sendQ[i % SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 		ERROR( nbytes < 0 );
-	  	
+		
 		client.hdr.SeqNum = i;
-
+		
 		logTime ( log, "RESEND", &client );
 	  }
 	}
-
-	// Receive Acks Loop
-	if ( sendQ >= 0 ) {
-	  // Receive message from server
-	  bzero( recvmsg, sizeof( recvmsg ) );
-	  fromLen = sizeof( fromAddr );
-
-	  retval = select( sd + 1, &rfds, NULL, NULL, &tv );
-	  ERROR( retval < 0 );
-
-	  if ( retval ) {
-		nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
-		ERROR( nbytes < 0 );
-	  
-		// Set Last Ack Recieved
-		client.LAR = recvmsg[SEQNUM];
-		logTime ( log, "RECEIVE", &client );
-		// Decrement sendQ semaphore
-		sendQ--;
-	  }
-	}	
   } while ( client.hdr.Flags != 1 );
   
   // Close files
@@ -216,8 +204,6 @@ void logTime ( FILE * fp, char *msg, SwpState *ss ) {
   
   // Update log
   fprintf( fp, "%8s | SEQ %3i | LAR %3i | LFS %3i | %s\n", 
-		   msg, ss->hdr.SeqNum, ss->LAR, ss->LFS, timebuff );
-  printf( "Client: %8s | SEQ %3i | LAR %3i | LFS %3i | %s\n", 
 		   msg, ss->hdr.SeqNum, ss->LAR, ss->LFS, timebuff );
 }
 ////////////////////////////////////////////////////////////////////////////////

@@ -122,6 +122,8 @@ int main( int argc, char *argv[] ) {
 	// Make sure to cap string
 	buffer[nbytes] = '\0';	
 	
+	server.hdr.SeqNum = buffer[SEQNUM];
+
 	// Check to see if packet is what we need
 	if ( ( buffer[SEQNUM] >= server.LAF - RWS ) && 
 		 ( buffer[SEQNUM] < server.LAF ) ) {
@@ -158,6 +160,7 @@ int main( int argc, char *argv[] ) {
 	
 	// Check to see if the one we recieved is the next frame
 	if ( server.LFRcvd == server.NFE ) {
+
 	  // Update log
 	  logTime( log, "SEND", &server );
 	  
@@ -194,8 +197,6 @@ void logTime ( FILE * fp, char *msg, SwpState *ss ) {
   
   // Update log
   fprintf( fp, "%8s | SEQ %3i | LFRead %3i | LFRcvd %3i | LAF %3i | %s\n", 
-		   msg, ss->hdr.SeqNum, ss->LFRead, ss->LFRcvd, ss->LAF, timebuff );
-  printf( "Server: %8s | SEQ %3i | LFRead %3i | LFRcvd %3i | LAF %3i | %s\n", 
 		   msg, ss->hdr.SeqNum, ss->LFRead, ss->LFRcvd, ss->LAF, timebuff );
 }
 ////////////////////////////////////////////////////////////////////////////////
