@@ -71,3 +71,8 @@ Which of the following functions work
   [w]: http://www.vargascorpus.com/
   [e2]: mailto:patrick.vargas@colorado.edu
   [e1]: mailto:b.grace.harsha@gmail.com
+
+Notes
+-----
+
+We were able to get the window going. For some reason, our output file is off by one byte. In addition, our sliding window logic does not handle the packet losses. It does however discard ourt-of-range packets and buffers out-of-order packets. It also has the timeout set and works. Our logic for recieving duplicate acks is where we are failing. 
