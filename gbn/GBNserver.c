@@ -99,42 +99,45 @@ int main( int argc, char *argv[] ) {
   servAddr.sin_port        = htons( atoi( argv[1] ) ); // htons() sets the port # to network byte order
   servAddr.sin_addr.s_addr = INADDR_ANY;               // Supplies the IP address of the local machine
   ERROR( bind( sock, (struct sockaddr *) &servAddr, sizeof( servAddr ) ) < 0 );
-
+  
   do {
     int i = 0;
-    while(i < RWS)
-      {
-	// Receive message from client
-	nbytes = recvfrom( sock, &server.recvQ[i%RWS].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
-	ERROR( nbytes < 0 );
-
-	// Update log
-	logTime( log, "RECIEVE", &server );
-
-	// Get Header Data
-	ack[SEQNUM] = server.recvQ[i%RWS].msg[SEQNUM];
-	ack[FLAGS] = server.recvQ[i%RWS].msg[FLAGS];
-	server.LFRcvd = ack[SEQNUM]; // Last Frame Recieved
-	server.NFE = ack[SEQNUM] + 1; // Next Frame Expected
-	
-	// Make sure to cap string to not over shoot
-	server.recvQ[i%RWS].msg[nbytes] = '\0';
-	
-	// Copy and write recieved data
-	index = 2;
-	do c = fputc( server.recvQ[i%RWS].msg[index++], out );
-	while ( c != '\0' && index < PACKETSIZE - 1 );
-
-	// Respond using sendto_ in order to simulate dropped packets
-	nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
-	ERROR( nbytes < 0 );
-	
-	// Update log
-	logTime( log, "SEND", &server );
-	i++;
-      }
+    while(i < RWS) {
+	  // Receive message from client
+	  nbytes = recvfrom( sock, &server.recvQ[i%RWS].msg, sizeof( server.recvQ[0].msg ), 0, (struct sockaddr *) &cliAddr, &cliLen );
+	  ERROR( nbytes < 0 );
+	  
+	  // Update log
+	  logTime( log, "RECIEVE", &server );
+	  
+	  // Get Header Data
+	  ack[SEQNUM] = server.recvQ[i%RWS].msg[SEQNUM];
+	  ack[FLAGS] = server.recvQ[i%RWS].msg[FLAGS];
+	  server.LFRcvd = ack[SEQNUM]; // Last Frame Recieved
+	  server.NFE = ack[SEQNUM] + 1; // Next Frame Expected
+	  
+	  // Make sure to cap string to not over shoot
+	  server.recvQ[i%RWS].msg[nbytes] = '\0';
+	  
+	  // Copy and write recieved data
+	  index = 2;
+	  do { 
+		c = server.recvQ[i%RWS].msg[index];
+		if ( c == '\0' ) break;
+		fputc( c, out ); index++;
+	  }
+	  while ( c != '\0' && index < PACKETSIZE - 1 );
+	  
+	  // Respond using sendto_ in order to simulate dropped packets
+	  nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
+	  ERROR( nbytes < 0 );
+	  
+	  // Update log
+	  logTime( log, "SEND", &server );
+	  i++;
+	}
   } while ( ack[FLAGS] != 1 ); 
-
+  
   // Close files
   fclose( log ); fclose( out );
 

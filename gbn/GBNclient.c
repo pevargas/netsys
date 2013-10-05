@@ -72,8 +72,9 @@ int main(int argc, char *argv[]) {
   unsigned int fromLen;        // Response length
   char recvmsg[PACKETSIZE];    // Response 
   FILE *in, *log;              // Pointer to file
-  SwpState client;  
-
+  SwpState client;
+  SwpState state; 
+ 
   // Set state
   client.LAR = 0;
   client.LFS = 0;
@@ -108,58 +109,62 @@ int main(int argc, char *argv[]) {
 
   do {	
 	// Start index counting at 2 since header takes 2 bytes
-
 	int n = 0;
 	int i = 0;
-	while(n < SWS)
-	  {
-	    index = 2;
-	    // Set data
-	    do {
-	      c = fgetc( in );
-	      client.sendQ[n%SWS].msg[index++] = c;
-	    }
-	    while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
-	    if ( c == EOF ) client.hdr.Flags = 1;
 	
-	    // Set header
-	    client.sendQ[n%SWS].msg[SEQNUM] = client.LFS = client.hdr.SeqNum;
-	    client.sendQ[n%SWS].msg[FLAGS] = client.hdr.Flags;
+	// Read from File Loop
+	while(n < SWS) {
+	  index = 2;
+	  // Set data
+	  do {
+		c = fgetc( in );
+		client.sendQ[n%SWS].msg[index++] = c;
+	  }
+	  while ( ( c != EOF ) && ( index < PACKETSIZE - 1 ) );
+	  if ( c == EOF ) client.hdr.Flags = 1;
+	  
+	  // Set header
+	  client.sendQ[n%SWS].msg[SEQNUM] = client.hdr.SeqNum + n;
+	  client.sendQ[n%SWS].msg[FLAGS] = client.hdr.Flags;
+	  
+	  // End the content with null terminator
+	  client.sendQ[n%SWS].msg[index] = '\0';
+	  n++;
+	
+	  // Update log
+	  logTime ( log, "BUILD", &client );	  
+	}
 
-	    // End the content with null terminator
-	    client.sendQ[n%SWS].msg[index] = '\0';
-	    n++;
-	    // Increment Sequence Counter
-	    client.hdr.SeqNum++;
-	  }
-	while(i < SWS)
-	  {
-	    // Call sendto_ in order to simulate dropped packets
-	    nbytes = sendto_( sd, client.sendQ[i%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
-	ERROR( nbytes < 0 );
+	// Send packets to server loop
+	while(i < SWS) {
+	  // Call sendto_ in order to simulate dropped packets
+	  nbytes = sendto_( sd, client.sendQ[i%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
+	  ERROR( nbytes < 0 );
+
+	  // Increment Sequence Counter
+	  client.LFS = client.hdr.SeqNum;
 	
-	// Update log
-	logTime ( log, "SEND", &client );
-	i++;
-	  }
+	  // Update log
+	  logTime ( log, "SEND", &client );
+	  client.hdr.SeqNum++; i++;
+	}
+	
+	// Receive Acks from Server Loop
 	int t = 0;
-	while(t < SWS)
-	  {
-	    // Receive message from server
-	    bzero( recvmsg, sizeof( recvmsg ) );
-	    fromLen = sizeof( fromAddr );
-	    nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
-	    ERROR( nbytes < 0 );
-
-	    // Set Last Ack Recieved
-	    client.LAR = recvmsg[SEQNUM];
-	
-	    logTime ( log, "RECEIVE", &client );
-	    ++t;
-	  }
-
+	while(t < SWS) {
+	  // Receive message from server
+	  bzero( recvmsg, sizeof( recvmsg ) );
+	  fromLen = sizeof( fromAddr );
+	  nbytes = recvfrom( sd, &recvmsg, PACKETSIZE, 0, (struct sockaddr *) &fromAddr, &fromLen );
+	  ERROR( nbytes < 0 );
+	  
+	  // Set Last Ack Recieved
+	  client.LAR = recvmsg[SEQNUM];
+	  logTime ( log, "RECEIVE", &client );
+	  ++t;
+	}	
   } while ( client.hdr.Flags != 1 );
-
+  
   // Close files
   ERROR( fclose( in ) ); ERROR( fclose( log ) );
  
