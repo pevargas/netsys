@@ -12,5 +12,8 @@ fi
 
 wc foo1 sout.txt
 
-echo "<========= Log Comparision  =========>"
+echo "<====== Log Comparision - HEAD ======>"
+head *log.txt
+
+echo "<====== Log Comparision - TAIL ======>"
 tail *log.txt
