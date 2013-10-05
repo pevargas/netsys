@@ -33,21 +33,6 @@ Included Files
 3. makefile
 4. README.txt (this file)
 
-README
-------
-
-* Author Information
-* Description of application
-* How to compile and execute application
-* Which of the following functions work
-	- reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
-	- sliding windows at both the client and server, with cumulative acknowledgements
-	- timeouts with retransmission
-	- discarding of out­of­range packets
-	- buffering out­of­order packets
-	- **[non­4273]** window­based flow control such that the receiver's advertised window size dynamically adjusts to the receiver's ability to process
-* Technical details of the application
-
 Commands
 --------
 ### To Run the Program ###
@@ -76,11 +61,11 @@ This assignment is based on the files given by Professor Han, CSCI 4273: Network
 Which of the following functions work
 -------------------------------------
 
-- [] Reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
-- [] Sliding windows at both the client and server, with cumulative acknowledgements
-- [] Timeouts with retransmission
-- [] Discarding of out­of­range packets
-- [] Buffering out­of­order packets
+- [ ] Reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
+- [X] Sliding windows at both the client and server, with cumulative acknowledgements
+- [X] Timeouts with retransmission
+- [X] Discarding of out­of­range packets
+- [X] Buffering out­of­order packets
 
 
   [w]: http://www.vargascorpus.com/
