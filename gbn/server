@@ -2,7 +2,7 @@
 
 # ./GBNserver <server_port> <error_rate> <random_seed> <output_file> <recieve_log>
 server_port=5555
-error_rate=0
+error_rate=0.5
 random_seed=0
 output_file=sout.txt
 recieve_log=slog.txt

@@ -73,10 +73,6 @@ int main( int argc, char *argv[] ) {
   SwpState server;                         // Window state
   FILE *log, *out;                         // File pointers to log and output file
 
-  fd_set rfds;
-  struct timeval tv;
-  int retval;
-
   // Initalize Variables
   server.hdr.SeqNum = 0;
   server.hdr.Flags  = 0;
@@ -117,39 +113,24 @@ int main( int argc, char *argv[] ) {
   char buffer[PACKETSIZE];
   bzero( &buffer, PACKETSIZE );
 
-  FD_ZERO( &rfds );
-  FD_SET( sock, &rfds );
-  /* Wait up to 50 microsec */
-  tv.tv_sec = 0.005;
-  tv.tv_usec = 0;
-
-  int isFirst = 1;
-
   do {
 
-	retval = select( sock + 1, &rfds, NULL, NULL, &tv );
-	ERROR( retval < 0 );
+	// Receive message from client
+	nbytes = recvfrom( sock, &buffer, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, &cliLen );
+	ERROR( nbytes < 0 );
 	
-	if ( retval ) {
-	  // Receive message from client
-	  nbytes = recvfrom( sock, &buffer, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, &cliLen );
-	  ERROR( nbytes < 0 );
-
-	  isFirst = 0;
+	// Make sure to cap string
+	buffer[nbytes] = '\0';	
+	
+	// Check to see if packet is what we need
+	if ( ( buffer[SEQNUM] >= server.LAF - RWS ) && 
+		 ( buffer[SEQNUM] < server.LAF ) ) {
+	  // Set Last Frame Recieved to this buffer number
+	  server.LFRcvd = buffer[SEQNUM];
+	  memcpy( server.recvQ[ server.LFRcvd % RWS ].msg, buffer, PACKETSIZE);
 	  
-	  // Make sure to cap string
-	  buffer[nbytes] = '\0';	
-	  
-	  // Check to see if packet is what we need
-	  if ( ( buffer[SEQNUM] >= server.LAF - RWS ) && 
-		   ( buffer[SEQNUM] < server.LAF ) ) {
-		// Set Last Frame Recieved to this buffer number
-		server.LFRcvd = buffer[SEQNUM];
-		memcpy( server.recvQ[ server.LFRcvd % RWS ].msg, buffer, PACKETSIZE);
-		
-		// Update log
-		logTime( log, "RECEIVE", &server );
-	  }
+	  // Update log
+	  logTime( log, "RECEIVE", &server );
 	}
 
 	// Check to see if the one we recieved is the next frame
@@ -164,17 +145,19 @@ int main( int argc, char *argv[] ) {
 	  }
 	  while ( index < PACKETSIZE - 1 );
 	  
-	  // Then we'll set a flag for when there's a timeout to resend
-	  //   the current ack sometime around here. 
+	  server.LFRead = server.NFE;
 	  
 	  // Set Ack Header Data
 	  ack[SEQNUM] = server.LFRcvd;
 	  ack[FLAGS] = 0;
-	  
-	  // Respond using sendto_ in order to simulate dropped packets
-	  nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
-	  ERROR( nbytes < 0 );
-	  
+	}
+	
+	// Respond using sendto_ in order to simulate dropped packets
+	nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
+	ERROR( nbytes < 0 );
+	
+	// Check to see if the one we recieved is the next frame
+	if ( server.LFRcvd == server.NFE ) {
 	  // Update log
 	  logTime( log, "SEND", &server );
 	  
@@ -183,14 +166,9 @@ int main( int argc, char *argv[] ) {
 	  // Increment Largest Acceptable Frame
 	  server.LAF++;
 	}
-
-	if ( retval == 0 && !isFirst ) {
-	  // Resend Ack
-	  nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
-	  ERROR( nbytes < 0 );
-	  
+	else {
 	  // Update log
-	  logTime( log, "SEND", &server );
+	  logTime( log, "RESEND", &server );
 	}	
   } while ( buffer[FLAGS] != 1 ); 
   
