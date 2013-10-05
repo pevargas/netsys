@@ -72,7 +72,11 @@ int main( int argc, char *argv[] ) {
   char ack[2];                             // Acknowledgment packet
   SwpState server;                         // Window state
   FILE *log, *out;                         // File pointers to log and output file
-   
+
+  fd_set rfds;
+  struct timeval tv;
+  int retval;
+
   // Initalize Variables
   server.hdr.SeqNum = 0;
   server.hdr.Flags  = 0;
@@ -80,6 +84,9 @@ int main( int argc, char *argv[] ) {
   server.LFRcvd = -1;
   server.LAF = RWS;
   server.NFE = 0;
+
+  ack[SEQNUM] = -1;
+  ack[FLAGS] = 0;
 
   // Check command line args.
   if( argc < 6 ) {
@@ -89,7 +96,7 @@ int main( int argc, char *argv[] ) {
   
   // Note: you must initialize the network library first before calling sendto_().
   //   The arguments are the <errorrate> and <random seed>
-  init_net_lib( atof(argv[2]), atoi( argv[3] ) );
+  init_net_lib( atof( argv[2] ), atoi( argv[3] ) );
   printf( "Error rate: %f\n", atof( argv[2] ) );
 
   // Open log and output file
@@ -109,26 +116,42 @@ int main( int argc, char *argv[] ) {
 
   char buffer[PACKETSIZE];
   bzero( &buffer, PACKETSIZE );
-  
-  do {
- 	// Receive message from client
-	nbytes = recvfrom( sock, &buffer, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, &cliLen );
-	ERROR( nbytes < 0 );
 
-	// Make sure to cap string
-	buffer[nbytes] = '\0';
+  FD_ZERO( &rfds );
+  FD_SET( sock, &rfds );
+  /* Wait up to 50 microsec */
+  tv.tv_sec = 0.005;
+  tv.tv_usec = 0;
+
+  int isFirst = 1;
+
+  do {
+
+	retval = select( sock + 1, &rfds, NULL, NULL, &tv );
+	ERROR( retval < 0 );
 	
-	// Check to see if packet is what we need
-	if ( ( buffer[SEQNUM] >= server.LAF - RWS ) && 
-		 ( buffer[SEQNUM] < server.LAF ) ) {
-	  // Set Last Frame Recieved to this buffer number
-	  server.LFRcvd = buffer[SEQNUM];
-	  memcpy( server.recvQ[ server.LFRcvd % RWS ].msg, buffer, PACKETSIZE);
+	if ( retval ) {
+	  // Receive message from client
+	  nbytes = recvfrom( sock, &buffer, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, &cliLen );
+	  ERROR( nbytes < 0 );
+
+	  isFirst = 0;
 	  
-	  // Update log
-	  logTime( log, "RECEIVE", &server );
+	  // Make sure to cap string
+	  buffer[nbytes] = '\0';	
+	  
+	  // Check to see if packet is what we need
+	  if ( ( buffer[SEQNUM] >= server.LAF - RWS ) && 
+		   ( buffer[SEQNUM] < server.LAF ) ) {
+		// Set Last Frame Recieved to this buffer number
+		server.LFRcvd = buffer[SEQNUM];
+		memcpy( server.recvQ[ server.LFRcvd % RWS ].msg, buffer, PACKETSIZE);
+		
+		// Update log
+		logTime( log, "RECEIVE", &server );
+	  }
 	}
-	
+
 	// Check to see if the one we recieved is the next frame
 	if ( server.LFRcvd == server.NFE ) {
 	  
@@ -140,7 +163,7 @@ int main( int argc, char *argv[] ) {
 		fputc( c, out ); index++;
 	  }
 	  while ( index < PACKETSIZE - 1 );
-
+	  
 	  // Then we'll set a flag for when there's a timeout to resend
 	  //   the current ack sometime around here. 
 	  
@@ -154,14 +177,21 @@ int main( int argc, char *argv[] ) {
 	  
 	  // Update log
 	  logTime( log, "SEND", &server );
-	  // if ( we timed out and need to resend )
-	  // logTime( log, "RESEND", &server );
 	  
 	  // Increment Next Frame Expected
 	  server.NFE++;
 	  // Increment Largest Acceptable Frame
 	  server.LAF++;
 	}
+
+	if ( retval == 0 && !isFirst ) {
+	  // Resend Ack
+	  nbytes = sendto_( sock, ack, PACKETSIZE, 0, (struct sockaddr *) &cliAddr, sizeof( cliAddr ) );
+	  ERROR( nbytes < 0 );
+	  
+	  // Update log
+	  logTime( log, "SEND", &server );
+	}	
   } while ( buffer[FLAGS] != 1 ); 
   
   // Close files
