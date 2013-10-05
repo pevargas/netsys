@@ -110,8 +110,7 @@ int main(int argc, char *argv[]) {
   do {	
 	// Start index counting at 2 since header takes 2 bytes
 	int n = 0;
-	int i = 0;
-	
+
 	// Read from File Loop
 	while(n < SWS) {
 	  index = 2;
@@ -129,16 +128,12 @@ int main(int argc, char *argv[]) {
 	  
 	  // End the content with null terminator
 	  client.sendQ[n%SWS].msg[index] = '\0';
-	  n++;
 	
 	  // Update log
 	  logTime ( log, "BUILD", &client );	  
-	}
 
-	// Send packets to server loop
-	while(i < SWS) {
 	  // Call sendto_ in order to simulate dropped packets
-	  nbytes = sendto_( sd, client.sendQ[i%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
+	  nbytes = sendto_( sd, client.sendQ[n%SWS].msg, PACKETSIZE, 0, (struct sockaddr *) &remote, sizeof( remote ) );
 	  ERROR( nbytes < 0 );
 
 	  // Increment Sequence Counter
@@ -146,7 +141,7 @@ int main(int argc, char *argv[]) {
 	
 	  // Update log
 	  logTime ( log, "SEND", &client );
-	  client.hdr.SeqNum++; i++;
+	  client.hdr.SeqNum++; n++;
 	}
 	
 	// Receive Acks from Server Loop
