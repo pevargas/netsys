@@ -56,7 +56,7 @@ Commands
 Acknowledgments
 ---------------
 
-This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 2 - Go-Back N, Sliding Windows and Window-Based Flow Control", University of Colorado Boulder. Our implementation builds upon the tar file given to us as well as our preiveious assignment, "User Datagram Protocol Assignment".
+This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 2 - Go-Back N, Sliding Windows and Window-Based Flow Control", University of Colorado Boulder. Our implementation builds upon the tar file given to us as well as our previous assignment, "User Datagram Protocol Assignment".
 
 Which of the following functions work
 -------------------------------------
