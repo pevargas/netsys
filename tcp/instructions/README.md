@@ -20,7 +20,7 @@ I. Introduction
 
 In this assignment, you will be asked to build a link state routing protocol that implements reliable flooding and Dijkstra's forward search algorithm.
 
-Figure 1 Network Topology
+![Figure 1 Network Topology](figure1.png)
 
 Figure 1 shows the topology of the network that you will be building with nodes and link costs based on the configuration file posted to the moodle. Each router will be a separate UNIX process that communicates with other routers by exchanging TCP messages through the TCP socket interface. Each router implementation must be written in C on Linux.  Each of your routers will be identical, running the same routing code. You should be able to start your routers in any order.  This proves challenging because you cannot connect to a socket that is listening and you cannot listen for a connection on a socket that has failed to connect.  Please see the suggestions written under supplementary information.
 
@@ -29,6 +29,8 @@ network.
 
 II. Configuration File - Initialization of Directly Connected Routers
 ---------------------------------------------------------------------
+
+![Figure 2 Network Topology with Ports](figure2.png)
 
 The configuration file posted to moodle corresponds to the network topology with ports drawn above. In order to alleviated conflicting port usage please work on your own machine or a CSEL lab machine to guarantee that no one else is using given ports. **Your assignment must work independent of the port numbers and link costs given in the initialization file.**
 
