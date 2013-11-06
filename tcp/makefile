@@ -9,23 +9,19 @@
 #------------------------------------------------------------------------------#
 CC     = gcc
 FLAGS  = -Wall
-REM    = $(wildcard GBNclient GBNserver *~ *.tar *out.txt *log.txt 0)
+REM    = $(wildcard routed_LS *~ *.tar *out.txt *log.txt)
 
-all: GBNclient GBNserver
+all: routed_LS
 
-GBNclient: 
-	$(CC) $(FLAGS) GBNclient.c -o $@
-
-GBNserver:
-	$(CC) $(FLAGS) GBNserver.c -o $@
+routed_LS:
+	$(CC) $(FLAGS) routed_LS.c -o $@
 
 deploy:
-	@mkdir harsha_vargas_gbn;
-	@cp GBNclient.c harsha_vargas_gbn;
-	@cp GBNserver.c harsha_vargas_gbn;
-	@cp makefile harsha_vargas_gbn;
-	@cp README.md harsha_vargas_gbn/README.txt;
-	@tar -cvf harsha_vargas_gbn.tar harsha_vargas_gbn;
+	@mkdir harsha_vargas_tcp;
+	@cp routed_LC.c harsha_vargas_tcp;
+	@cp makefile harsha_vargas_tcp;
+	@cp README.md harsha_vargas_tcp/README.txt;
+	@tar -cvf harsha_vargas_tcp.tar harsha_vargas_tcp;
 
 clean:
 	@rm $(REM);
