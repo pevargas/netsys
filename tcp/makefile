@@ -1,0 +1,37 @@
+#------------------------------------------------------------------------------#
+# File:   makefile				        Fall 2013
+# Author: Patrick Vargas			    patrick.vargas@colorado.edu
+# University of Colorado Boulder        CSCI 4273: Network Systems
+# Description:
+#   
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+CC     = gcc
+FLAGS  = -Wall
+REM    = $(wildcard GBNclient GBNserver *~ *.tar *out.txt *log.txt 0)
+
+all: GBNclient GBNserver
+
+GBNclient: 
+	$(CC) $(FLAGS) GBNclient.c -o $@
+
+GBNserver:
+	$(CC) $(FLAGS) GBNserver.c -o $@
+
+deploy:
+	@mkdir harsha_vargas_gbn;
+	@cp GBNclient.c harsha_vargas_gbn;
+	@cp GBNserver.c harsha_vargas_gbn;
+	@cp makefile harsha_vargas_gbn;
+	@cp README.md harsha_vargas_gbn/README.txt;
+	@tar -cvf harsha_vargas_gbn.tar harsha_vargas_gbn;
+
+clean:
+	@rm $(REM);
+	@clear;
+
+# Obligatory unix joke
+love:
+	@echo not war?
+#------------------------------------------------------------------------------#
