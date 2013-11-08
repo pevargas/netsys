@@ -10,18 +10,19 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //#include <arpa/inet.h>
-#include <errno.h>
+#include <ctype.h>  // toupper()
+#include <errno.h>  // strerror( errno )
 //#include <netdb.h>
 //#include <netinet/in.h>
 //#include <signal.h>
-#include <string.h>   /* memset(), strerror() */
+#include <string.h> // memset(), strerror()
 #include <stdio.h>
 #include <stdlib.h>
 //#include <sys/socket.h>
-//#include <sys/time.h> /* select() */
+//#include <sys/time.h> // select()
 //#include <sys/types.h>
 #include <unistd.h>
-#include <time.h>
+#include <time.h>   // For timestamping
 
 #define ERROR( boolean ) if ( boolean ) {\
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
@@ -29,7 +30,6 @@
 }
 #define PKTSIZ 512
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function to log information, complete with timestamp
@@ -49,22 +49,24 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  char *src;          // My Name
-  char *pch;         // A charager to tokenize the input
-  char line[PKTSIZ]; // Input from the init file
-  char msg[PKTSIZ];  // Message for the log
-  int count = 0;     // A counter to count my neighbors
-  FILE *init;        // The init file
-  FILE *log;         // My log file
-  Nodes LS[PKTSIZ];  // A struct to hold my connections to my neighbors
+  char  *src;         // My Name
+  char  *pch;         // A character to tokenize the input
+  char  line[PKTSIZ]; // Input from the init file
+  char  msg[PKTSIZ];  // Message for the log
+  int   count = 0;    // A counter to count my neighbors
+  FILE  *init;        // The init file
+  FILE  *log;         // My log file
+  Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
   // Check command line args
   if( argc < 4 ) {
-    printf("Usage: %s <RouterID> <LogFileName> <InitializationFile>\n", argv[0]);
+    fprintf( stderr, 
+			 "Usage: %s <RouterID> <LogFileName> <InitializationFile>\n", 
+			 argv[0] );
     exit( EXIT_FAILURE );
   }
 
-  src = argv[1];
+  src  = argv[1];
   log  = fopen( argv[2], "w" ); ERROR( log < 0 );
   init = fopen( argv[3], "r" ); ERROR( init < 0 );
 
@@ -72,7 +74,16 @@ int main( int argc, char *argv[] ) {
   logTime( log, msg );
 
   while ( fgets( line, PKTSIZ, init ) != NULL ) {
-   	sprintf( msg, "%s", line );
+	pch = strtok( line, " <,>" );
+	fprintf( log, "%s vs %s is %i\n", pch, src, pch == src );
+	if ( pch == src ) {
+	  sprintf( msg, "%s", line );
+	  logTime( log, msg );
+	}
+  }
+
+  if ( count == 0 ) {
+	sprintf( msg, "Unable to find router %s in %s\n", src, argv[3] );
 	logTime( log, msg );
   }
 

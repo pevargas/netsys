@@ -12,6 +12,5 @@ node=( {A..F} )
 
 for i in 0 1 2 3 4 5
 do
-	echo "./routed_LS ${node[$i]} ${node[$i]}.log init.txt"
 	./routed_LS ${node[i]} ${node[i]}.log init.txt &
 done
