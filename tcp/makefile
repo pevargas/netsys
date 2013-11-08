@@ -9,7 +9,7 @@
 #------------------------------------------------------------------------------#
 CC     = gcc
 FLAGS  = -Wall
-REM    = $(wildcard routed_LS *~ *.tar *out.txt *log.txt)
+REM    = $(wildcard routed_LS *~ *.tar *.log)
 
 all: routed_LS
 

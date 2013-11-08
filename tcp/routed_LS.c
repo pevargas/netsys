@@ -43,9 +43,13 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  FILE *init;
-  char input[PKTSIZ];
-  Nodes LS[PKTSIZ];
+  char src;          // My Name
+  char *pch;         // A charager to tokenize the input
+  char line[PKTSIZ]; // Input from the init file
+  int count = 0;     // A counter to count my neighbors
+  FILE *init;        // The init file
+  FILE *log;         // My log file
+  Nodes LS[PKTSIZ];  // A struct to hold my connections to my neighbors
 
   // Check command line args
   if( argc < 4 ) {
@@ -53,16 +57,14 @@ int main( int argc, char *argv[] ) {
     exit( EXIT_FAILURE );
   }
 
-  init = fopen( argv[3], "r" );
-  ERROR( init < 0 );
+  log  = fopen( argv[2], "w" ); ERROR( log < 0 );
+  init = fopen( argv[3], "r" ); ERROR( init < 0 );
 
-  char *pch;
-  int count = 0;
-
-  while ( fgets( input, PKTSIZ, init ) != NULL ) {
-	printf( "%s", input );
-	
+  while ( fgets( line, PKTSIZ, init ) != NULL ) {
+	fprintf( log, "%s", line );	
   }
+
+  fclose( log );
   fclose( init );
 
   return EXIT_SUCCESS;
