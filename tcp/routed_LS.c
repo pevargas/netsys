@@ -29,6 +29,8 @@
   exit( EXIT_FAILURE );\
 }
 #define PKTSIZ 512
+#define MAX_PENDING 5 
+#define MAX_LINE 256 
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +60,11 @@ int main( int argc, char *argv[] ) {
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
+  struct sockaddr_in sin; 
+      char buf[MAX_LINE]; 
+      int len; 
+      int s, new_s;
+
   // Check command line args
   if( argc < 4 ) {
     fprintf( stderr, 
@@ -86,6 +93,58 @@ int main( int argc, char *argv[] ) {
 	sprintf( msg, "Unable to find router %s in %s\n", src, argv[3] );
 	logTime( log, msg );
   }
+  // neighbor tables
+  // while < ports (in A's case 3)
+  int i = 0;
+  while(i < count)
+    {
+      /* build address data structure */ 
+      bzero((char *)&sin, sizeof(sin)); 
+      sin.sin_family = AF_INET; 
+      sin.sin_addr.s_addr = INADDR_ANY; 
+      // sin.sin_port = htons(nodes.dst);  NEED TO KNOW WHAT THIS VARIABLE IS FROM NEIGHBOR TABLES, DON'T THINK ITS NODES.DST
+      /* setup passive open */ 
+      if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) { 
+	perror("simplex-talk: socket"); 
+	exit(1); 
+      } 
+      if ((bind(s, (struct sockaddr *)&sin, sizeof(sin))) < 0) { 
+	perror("simplex-talk: bind"); 
+	exit(1); 
+      } 
+      listen(s, MAX_PENDING);
+      i++;
+    }
+  sleep(rand() % 50);
+  // pull each line from neighbor table for port numbers
+  /*
+    
+
+    struct hostent *hp; 
+    struct sockaddr_in sin; 
+    char *host; 
+    char buf[MAX_LINE]; 
+    int s; 
+    int len;
+
+
+    bzero((char *)&sin, sizeof(sin)); 
+    sin.sin_family = AF_INET; 
+    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length); 
+    sin.sin_port = htons(nodes.dst); 
+ 
+    // active open
+    if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) { 
+    perror("simplex-talk: socket"); 
+    exit(1); 
+    } 
+    if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) 
+    { 
+    perror("simplex-talk: connect"); 
+    close(s); 
+    exit(1); 
+    } 
+   */
 
   sprintf( msg, "Finished running for router %s\n", src );
   logTime( log, msg );
