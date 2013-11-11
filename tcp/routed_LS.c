@@ -46,17 +46,17 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 // Function to log information, complete with timestamp
 void logTime ( FILE *fp, char *msg );
+
+// Read in the initialization Text file and only store information for my node
+int getNeighbors( Nodes *LS, char *file, char *src );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
   char  *src;         // My Name
-  char  *pch;         // A character pointer to tokenize the input
-  char  line[PKTSIZ]; // Input from the init file
   char  msg[PKTSIZ];  // Message for the log
-  int   count = 0;    // A counter to count my neighbors
-  FILE  *init;        // The init file
+  int   count = 0;    // My number of neighbors
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
@@ -75,40 +75,13 @@ int main( int argc, char *argv[] ) {
 
   src  = (char *) toupper( (int) argv[1] );
   log  = fopen( argv[2], "w" ); ERROR( log < 0 );
-  init = fopen( argv[3], "r" ); ERROR( init < 0 );
 
   sprintf( msg, "Initialized log for router %s\n", src );
   logTime( log, msg );  
 
-  // Read in the initialization Text file and only store information
-  //   for my node
-  while ( fgets( line, PKTSIZ, init ) != NULL ) {
-	pch = strtok( line, " <,>" );
-	if ( strcmp( src, pch ) == 0 ) {
-	  // Get Source Name
-	  strcpy( LS[count].src, pch );
-
-	  // Get Source Port
-	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
-	  LS[count].srcPort = (int) atoi( pch );
-
-	  // Get Destination Name
-	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
-	  strcpy( LS[count].dst, pch );
-
-	  // Get Destination Port
-	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
-	  LS[count].dstPort = (int) atoi( pch );
-
-	  // Get Cost of Link
-	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
-	  LS[count].cost    = (int) atoi( pch );
-
-	  // Increment
-	  count++;
-	}
-  }
-  fclose( init );
+  count = getNeighbors( LS, argv[3], src );
+  sprintf( msg, "Router %s has %i neihbors\n", src, count );
+  logTime( log, msg );  
 
   // If count is zero, then there was an error on the command line or
   //   in the initialization file
@@ -182,6 +155,47 @@ int main( int argc, char *argv[] ) {
   fclose( log );
 
   return EXIT_SUCCESS;
+}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Read in the initialization Text file and only store information for my node
+int getNeighbors( Nodes *LS, char *file, char *src ) {
+  char  *pch;         // A character pointer to tokenize the input
+  char  line[PKTSIZ]; // Input from the init file
+  int count = 0;      // A counter to count my neighbors
+  FILE  *init;        // The init file
+
+  init = fopen( file, "r" ); ERROR( init < 0 );
+  while ( fgets( line, PKTSIZ, init ) != NULL ) {
+	pch = strtok( line, " <,>" );
+	if ( strcmp( src, pch ) == 0 ) {
+	  // Get Source Name
+	  strcpy( LS[count].src, pch );
+
+	  // Get Source Port
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].srcPort = (int) atoi( pch );
+
+	  // Get Destination Name
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  strcpy( LS[count].dst, pch );
+
+	  // Get Destination Port
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].dstPort = (int) atoi( pch );
+
+	  // Get Cost of Link
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].cost    = (int) atoi( pch );
+
+	  // Increment
+	  count++;
+	}
+  }
+  fclose( init );
+
+  return count;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
