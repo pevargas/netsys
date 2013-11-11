@@ -1,0 +1,48 @@
+int main( int argc, char *argv[] ) {
+  // Variables
+  FILE *init;
+  char input[PKTSIZ];
+  Nodes LS[PKTSIZ];
+  char src;
+  char *pch;
+  int count = 0;
+
+  // Check command line args
+  if( argc < 4 ) {
+    printf("Usage: %s <RouterID> <LogFileName> <InitializationFile>\n", argv[0]);
+    exit( EXIT_FAILURE );
+  }
+
+  src = toupper( argv[1] );
+
+  init = fopen( argv[3], "r" );
+  ERROR( init < 0 );
+
+
+  while ( fgets( input, PKTSIZ, init ) != NULL ) {
+	pch = strtok( input, " <,>" );  ERROR( pch == NULL );
+	if ( pch == src ) {
+	  LS[count].src = pch;
+	  pch = strtok( NULL, " <,>" ); ERROR( pch == NULL );
+	  LS[count].srcPort = atoi( pch );
+	  pch = strtok( NULL, " <,>" ); ERROR( pch == NULL );
+	  LS[count].dst = pch;
+	  pch = strtok( NULL, " <,>" ); ERROR( pch == NULL );
+	  LS[count].dstPort = atoi( pch );
+	  pch = strtok( NULL, " <,>" ); ERROR( pch == NULL );
+	  LS[count].cost = atoi( pch );
+	  count++;
+	}
+  }
+  fclose( init );
+
+  int i;
+  printf( "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\n" );
+  for ( i = 0; i < count; ++i ) {
+	printf( "%s\t%i\t%s\t%i\t%i\n", 
+		   LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost );
+  }
+
+  return EXIT_SUCCESS;
+}
+////////////////////////////////////////////////////////////////////////////////
