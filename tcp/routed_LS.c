@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 // File: routed_LS.c                    Fall 2013
 // Students: 
@@ -34,14 +35,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Function to log information, complete with timestamp
-void logTime ( FILE *fp, char *msg );
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 typedef struct {
-  char src;    // The name of the source router
-  char dst;    // The name of the destination router
+  char *src;   // The name of the source router
+  char *dst;   // The name of the destination router
   int srcPort; // The port on source router (ie: Me)
   int dstPort; // The port on the destination router
   int cost;    // The cost to get there
@@ -49,10 +45,15 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Function to log information, complete with timestamp
+void logTime ( FILE *fp, char *msg );
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  char  *src;         // My Name
-  char  *pch;         // A character to tokenize the input
+  char  src[PKTSIZ];  // My Name
+  char  pch[PKTSIZ];  // A character to tokenize the input
   char  line[PKTSIZ]; // Input from the init file
   char  msg[PKTSIZ];  // Message for the log
   int   count = 0;    // A counter to count my neighbors
@@ -60,11 +61,11 @@ int main( int argc, char *argv[] ) {
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
-  struct sockaddr_in sin; 
-      char buf[MAX_LINE]; 
-      int len; 
-      int s, new_s;
-
+  //  struct sockaddr_in sin; 
+  /*  char buf[MAX_LINE]; 
+  int len; 
+  int s, new_s;
+  */
   // Check command line args
   if( argc < 4 ) {
     fprintf( stderr, 
@@ -73,37 +74,55 @@ int main( int argc, char *argv[] ) {
     exit( EXIT_FAILURE );
   }
 
-  src  = argv[1];
+  sprintf( src, "%s", (char *) toupper( (int) argv[1] ) );
   log  = fopen( argv[2], "w" ); ERROR( log < 0 );
   init = fopen( argv[3], "r" ); ERROR( init < 0 );
 
   sprintf( msg, "Initialized log for router %s\n", src );
-  logTime( log, msg );
+  logTime( log, msg );  
 
   while ( fgets( line, PKTSIZ, init ) != NULL ) {
-	pch = strtok( line, " <,>" );
-	fprintf( log, "%s vs %s is %i\n", pch, src, pch == src );
-	if ( pch == src ) {
-	  sprintf( msg, "%s", line );
-	  logTime( log, msg );
+	sprintf( pch, "%s", strtok( line, " <,>" ) ); ERROR( pch == NULL );
+	if ( strcmp( src, pch ) == 0 ) {
+	  LS[count].src = pch;
+	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
+	  LS[count].srcPort = atoi( pch );
+	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
+	  LS[count].dst = pch;
+	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
+	  LS[count].dstPort = atoi( pch );
+	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
+	  LS[count].cost = atoi( pch );
+	  count++;
 	}
   }
+  fclose( init );
 
   if ( count == 0 ) {
 	sprintf( msg, "Unable to find router %s in %s\n", src, argv[3] );
 	logTime( log, msg );
+	fclose( log );	
+	exit( EXIT_FAILURE );
   }
+
+  int i;
+  fprintf( log, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\n" );
+  for ( i = 0; i < count; ++i ) {
+	fprintf( log, "%s\t%i\t%s\t%i\t%i\n", 
+			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost );
+  }
+  
   // neighbor tables
   // while < ports (in A's case 3)
-  int i = 0;
+  /*  int i = 0;
   while(i < count)
     {
-      /* build address data structure */ 
+      // build address data structure 
       bzero((char *)&sin, sizeof(sin)); 
       sin.sin_family = AF_INET; 
       sin.sin_addr.s_addr = INADDR_ANY; 
       // sin.sin_port = htons(nodes.dst);  NEED TO KNOW WHAT THIS VARIABLE IS FROM NEIGHBOR TABLES, DON'T THINK ITS NODES.DST
-      /* setup passive open */ 
+      // setup passive open
       if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) { 
 	perror("simplex-talk: socket"); 
 	exit(1); 
@@ -117,8 +136,6 @@ int main( int argc, char *argv[] ) {
     }
   sleep(rand() % 50);
   // pull each line from neighbor table for port numbers
-  /*
-    
 
     struct hostent *hp; 
     struct sockaddr_in sin; 
@@ -149,7 +166,6 @@ int main( int argc, char *argv[] ) {
   sprintf( msg, "Finished running for router %s\n", src );
   logTime( log, msg );
   fclose( log );
-  fclose( init );
 
   return EXIT_SUCCESS;
 }
@@ -171,3 +187,4 @@ void logTime ( FILE *fp, char *msg ) {
   fprintf( fp, "[%s] %s", timebuff, msg );
 }
 ////////////////////////////////////////////////////////////////////////////////
+
