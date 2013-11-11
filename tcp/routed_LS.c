@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 // File: routed_LS.c                    Fall 2013
 // Students: 
@@ -23,7 +22,7 @@
 //#include <sys/time.h> // select()
 //#include <sys/types.h>
 #include <unistd.h>
-#include <time.h>   // For timestamping
+#include <time.h>   // For time stamping
 
 #define ERROR( boolean ) if ( boolean ) {\
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
@@ -36,8 +35,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct {
-  char *src;   // The name of the source router
-  char *dst;   // The name of the destination router
+  char src[PKTSIZ];   // The name of the source router
+  char dst[PKTSIZ];   // The name of the destination router
   int srcPort; // The port on source router (ie: Me)
   int dstPort; // The port on the destination router
   int cost;    // The cost to get there
@@ -52,8 +51,8 @@ void logTime ( FILE *fp, char *msg );
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  char  src[PKTSIZ];  // My Name
-  char  pch[PKTSIZ];  // A character to tokenize the input
+  char  *src;         // My Name
+  char  *pch;         // A character pointer to tokenize the input
   char  line[PKTSIZ]; // Input from the init file
   char  msg[PKTSIZ];  // Message for the log
   int   count = 0;    // A counter to count my neighbors
@@ -74,30 +73,45 @@ int main( int argc, char *argv[] ) {
     exit( EXIT_FAILURE );
   }
 
-  sprintf( src, "%s", (char *) toupper( (int) argv[1] ) );
+  src  = (char *) toupper( (int) argv[1] );
   log  = fopen( argv[2], "w" ); ERROR( log < 0 );
   init = fopen( argv[3], "r" ); ERROR( init < 0 );
 
   sprintf( msg, "Initialized log for router %s\n", src );
   logTime( log, msg );  
 
+  // Read in the initialization Text file and only store information
+  //   for my node
   while ( fgets( line, PKTSIZ, init ) != NULL ) {
-	sprintf( pch, "%s", strtok( line, " <,>" ) ); ERROR( pch == NULL );
+	pch = strtok( line, " <,>" );
 	if ( strcmp( src, pch ) == 0 ) {
-	  LS[count].src = pch;
-	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
-	  LS[count].srcPort = atoi( pch );
-	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
-	  LS[count].dst = pch;
-	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
-	  LS[count].dstPort = atoi( pch );
-	  sprintf( pch, "%s", strtok( NULL, " <,>" ) ); ERROR( pch == NULL );
-	  LS[count].cost = atoi( pch );
+	  // Get Source Name
+	  strcpy( LS[count].src, pch );
+
+	  // Get Source Port
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].srcPort = (int) atoi( pch );
+
+	  // Get Destination Name
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  strcpy( LS[count].dst, pch );
+
+	  // Get Destination Port
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].dstPort = (int) atoi( pch );
+
+	  // Get Cost of Link
+	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
+	  LS[count].cost    = (int) atoi( pch );
+
+	  // Increment
 	  count++;
 	}
   }
   fclose( init );
 
+  // If count is zero, then there was an error on the command line or
+  //   in the initialization file
   if ( count == 0 ) {
 	sprintf( msg, "Unable to find router %s in %s\n", src, argv[3] );
 	logTime( log, msg );
