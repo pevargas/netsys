@@ -48,7 +48,10 @@ typedef struct {
 void logTime ( FILE *fp, char *msg );
 
 // Read in the initialization Text file and only store information for my node
-int getNeighbors( Nodes *LS, char *file, char *src );
+int getNeighbors( char *file, Nodes *LS, char *src );
+
+// Print the LS table
+void printTable( FILE *file, Nodes *LS, int count );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,14 +76,17 @@ int main( int argc, char *argv[] ) {
     exit( EXIT_FAILURE );
   }
 
+  // Get which node this router is
   src  = (char *) toupper( (int) argv[1] );
-  log  = fopen( argv[2], "w" ); ERROR( log < 0 );
 
+  // Open the log
+  log  = fopen( argv[2], "w" ); ERROR( log < 0 );
   sprintf( msg, "Initialized log for router %s\n", src );
   logTime( log, msg );  
 
-  count = getNeighbors( LS, argv[3], src );
-  sprintf( msg, "Router %s has %i neihbors\n", src, count );
+  // Get connections from Init file
+  count = getNeighbors( argv[3], LS, src );
+  sprintf( msg, "Router %s has %i neighbors\n", src, count );
   logTime( log, msg );  
 
   // If count is zero, then there was an error on the command line or
@@ -92,13 +98,8 @@ int main( int argc, char *argv[] ) {
 	exit( EXIT_FAILURE );
   }
 
-  int i;
-  fprintf( log, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\n" );
-  for ( i = 0; i < count; ++i ) {
-	fprintf( log, "%s\t%i\t%s\t%i\t%i\n", 
-			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost );
-  }
-  
+  printTable( log, LS, count );
+
   // neighbor tables
   // while < ports (in A's case 3)
   /*  int i = 0;
@@ -160,7 +161,7 @@ int main( int argc, char *argv[] ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Read in the initialization Text file and only store information for my node
-int getNeighbors( Nodes *LS, char *file, char *src ) {
+int getNeighbors( char *file, Nodes *LS, char *src ) {
   char  *pch;         // A character pointer to tokenize the input
   char  line[PKTSIZ]; // Input from the init file
   int count = 0;      // A counter to count my neighbors
@@ -216,3 +217,14 @@ void logTime ( FILE *fp, char *msg ) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Print the LS table
+void printTable( FILE *file, Nodes *LS, int count ) {
+  int i;
+  fprintf( file, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\n" );
+  for ( i = 0; i < count; ++i ) {
+	fprintf( file, "%s\t%i\t%s\t%i\t%i\n", 
+			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost );
+  }
+}
+////////////////////////////////////////////////////////////////////////////////
