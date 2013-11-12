@@ -9,20 +9,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-//#include <arpa/inet.h>
-#include <ctype.h>  // toupper()
-#include <errno.h>  // strerror( errno )
+#include <arpa/inet.h> // sockaddr_in
+#include <ctype.h>     // toupper()
+#include <errno.h>     // strerror( errno )
 //#include <netdb.h>
 //#include <netinet/in.h>
 //#include <signal.h>
-#include <string.h> // memset(), strerror()
+#include <string.h>    // memset(), strerror()
 #include <stdio.h>
 #include <stdlib.h>
 //#include <sys/socket.h>
 //#include <sys/time.h> // select()
 //#include <sys/types.h>
 #include <unistd.h>
-#include <time.h>   // For time stamping
+#include <time.h>       // For time stamping
 
 #define ERROR( boolean ) if ( boolean ) {\
   fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
@@ -35,11 +35,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct {
-  char src[PKTSIZ];   // The name of the source router
-  char dst[PKTSIZ];   // The name of the destination router
-  int srcPort; // The port on source router (ie: Me)
-  int dstPort; // The port on the destination router
-  int cost;    // The cost to get there
+  char src[PKTSIZ];           // The name of the source router
+  char dst[PKTSIZ];           // The name of the destination router
+  int srcPort;                // The port on source router (ie: Me)
+  int dstPort;                // The port on the destination router
+  int cost;                   // The cost to get there
+  int sock;                   // The socket for this neighbor
+  struct sockaddr_in srcAddr; // The socket address for source
+  struct sockaddr_in dstAddr; // The socket address for destination
+  unsigned int dstLen;        // Length of destination socket
 } Nodes;
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,14 +64,18 @@ int main( int argc, char *argv[] ) {
   char  *src;         // My Name
   char  msg[PKTSIZ];  // Message for the log
   int   count = 0;    // My number of neighbors
+  int i;              // Iterator
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
-  //  struct sockaddr_in sin; 
-  /*  char buf[MAX_LINE]; 
+  char buf[MAX_LINE]; 
   int len; 
   int s, new_s;
-  */
+  
+  //--------------------------------------
+  // Initialization File Set-Up
+  //--------------------------------------
+
   // Check command line args
   if( argc < 4 ) {
     fprintf( stderr, 
@@ -100,12 +108,18 @@ int main( int argc, char *argv[] ) {
 
   printTable( log, LS, count );
 
+  //--------------------------------------
+  // Opening of the Sockets
+  //--------------------------------------
+
   // neighbor tables
   // while < ports (in A's case 3)
-  /*  int i = 0;
-  while(i < count)
-    {
-      // build address data structure 
+  for( i = 0; i < count; ++i ) {
+	// Create the sockets
+	LS[i].sock = socket( AF_INET, SOCK_STREAM, 0 ); 
+	ERROR( LS[i].sock < 0 );
+    
+	/*// build address data structure 
       bzero((char *)&sin, sizeof(sin)); 
       sin.sin_family = AF_INET; 
       sin.sin_addr.s_addr = INADDR_ANY; 
@@ -120,9 +134,11 @@ int main( int argc, char *argv[] ) {
 	exit(1); 
       } 
       listen(s, MAX_PENDING);
-      i++;
+	*/
     }
-  sleep(rand() % 50);
+  printTable( log, LS, count );
+
+  /*sleep(rand() % 50);
   // pull each line from neighbor table for port numbers
 
     struct hostent *hp; 
@@ -131,7 +147,6 @@ int main( int argc, char *argv[] ) {
     char buf[MAX_LINE]; 
     int s; 
     int len;
-
 
     bzero((char *)&sin, sizeof(sin)); 
     sin.sin_family = AF_INET; 
@@ -149,7 +164,7 @@ int main( int argc, char *argv[] ) {
     close(s); 
     exit(1); 
     } 
-   */
+  */
 
   sprintf( msg, "Finished running for router %s\n", src );
   logTime( log, msg );
@@ -190,6 +205,9 @@ int getNeighbors( char *file, Nodes *LS, char *src ) {
 	  pch = strtok( NULL, " <,>" ); ERROR ( pch == NULL );
 	  LS[count].cost    = (int) atoi( pch );
 
+	  // Init Basics
+	  LS[count].sock    = 0;
+
 	  // Increment
 	  count++;
 	}
@@ -221,10 +239,12 @@ void logTime ( FILE *fp, char *msg ) {
 // Print the LS table
 void printTable( FILE *file, Nodes *LS, int count ) {
   int i;
-  fprintf( file, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\n" );
+
+  fprintf( file, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\tSOCK\n" );
   for ( i = 0; i < count; ++i ) {
-	fprintf( file, "%s\t%i\t%s\t%i\t%i\n", 
-			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost );
+	fprintf( file, "%s\t%i\t%s\t%i\t%i\t%i\n", 
+			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost,
+			 LS[i].sock );
   }
 }
 ////////////////////////////////////////////////////////////////////////////////
