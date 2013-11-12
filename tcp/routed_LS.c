@@ -40,7 +40,8 @@ typedef struct {
   int srcPort;                // The port on source router (ie: Me)
   int dstPort;                // The port on the destination router
   int cost;                   // The cost to get there
-  int sock;                   // The socket for this neighbor
+  int srcSock;                // The socket for this neighbor
+  int dstSock;                // The socket for the source
   struct sockaddr_in srcAddr; // The socket address for source
   struct sockaddr_in dstAddr; // The socket address for destination
   unsigned int dstLen;        // Length of destination socket
@@ -64,7 +65,8 @@ int main( int argc, char *argv[] ) {
   char  *src;         // My Name
   char  msg[PKTSIZ];  // Message for the log
   int   count = 0;    // My number of neighbors
-  int i;              // Iterator
+  int   i;            // Iterator
+  int   code;         // Used to check error codes
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
 
@@ -116,56 +118,53 @@ int main( int argc, char *argv[] ) {
   // while < ports (in A's case 3)
   for( i = 0; i < count; ++i ) {
 	// Create the sockets
-	LS[i].sock = socket( AF_INET, SOCK_STREAM, 0 ); 
-	ERROR( LS[i].sock < 0 );
-    
-	/*// build address data structure 
-      bzero((char *)&sin, sizeof(sin)); 
-      sin.sin_family = AF_INET; 
-      sin.sin_addr.s_addr = INADDR_ANY; 
-      // sin.sin_port = htons(nodes.dst);  NEED TO KNOW WHAT THIS VARIABLE IS FROM NEIGHBOR TABLES, DON'T THINK ITS NODES.DST
-      // setup passive open
-      if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) { 
-	perror("simplex-talk: socket"); 
-	exit(1); 
-      } 
-      if ((bind(s, (struct sockaddr *)&sin, sizeof(sin))) < 0) { 
-	perror("simplex-talk: bind"); 
-	exit(1); 
-      } 
-      listen(s, MAX_PENDING);
-	*/
-    }
-  printTable( log, LS, count );
+	LS[i].dstSock = socket( PF_INET, SOCK_STREAM, 0 ); 
+	ERROR( LS[i].dstSock < 0 );
 
-  /*sleep(rand() % 50);
-  // pull each line from neighbor table for port numbers
+	// Build address data structure
+    bzero( (char *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
+	LS[i].dstAddr.sin_family = AF_INET;
+	LS[i].dstAddr.sin_addr.s_addr = INADDR_ANY;
+	LS[i].dstAddr.sin_port = htons( LS[i].dstPort );
+	
+	// Passive Open
+	code = bind( LS[i].dstSock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
+	ERROR( code < 0 );
 
-    struct hostent *hp; 
-    struct sockaddr_in sin; 
-    char *host; 
-    char buf[MAX_LINE]; 
-    int s; 
-    int len;
+	// Listening for something
+	listen(s, MAX_PENDING);	
+ 
+	printTable( log, LS, count );
 
-    bzero((char *)&sin, sizeof(sin)); 
-    sin.sin_family = AF_INET; 
-    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length); 
-    sin.sin_port = htons(nodes.dst); 
+	sleep( rand() % 50 );
+	// pull each line from neighbor table for port numbers
+	
+	struct hostent *hp; 
+	char *host; 
+	char buf[MAX_LINE]; 
+	int s; 
+	int len;
+		
+	bzero( (char *) &LS[i].srcAddr, sizeof( LS[i].srcAddr ) ); 
+    LS[i].srcAddr.sin_family = AF_INET; 
+    bcopy( hp->h_addr, (char *) &LS[i].srcAddr.sin_addr, hp->h_length ); 
+    LS[i].srcAddr.sin_port = htons( LS[i].srcPort ); 
  
     // active open
-    if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) { 
-    perror("simplex-talk: socket"); 
-    exit(1); 
-    } 
-    if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) 
-    { 
-    perror("simplex-talk: connect"); 
-    close(s); 
-    exit(1); 
-    } 
-  */
+    LS[i].srcSock = socket( PF_INET, SOCK_STREAM, 0 );
+	ERROR( LS[i].srcSock < 0 );
 
+	code = connect( LS[i].srcSock, (struct sockaddr *) &LS[i].srcSock, sizeof( LS[i].srcSock ) );
+    perror("simplex-talk: connect"); 
+
+    exit(1); 
+  } 
+   
+  // Close Sockets
+  for ( i = 0; i < count; ++i ) {
+	close( LS[i].srcSock ); 
+	close( LS[i].dstSock ); 
+  }
   sprintf( msg, "Finished running for router %s\n", src );
   logTime( log, msg );
   fclose( log );
@@ -206,7 +205,8 @@ int getNeighbors( char *file, Nodes *LS, char *src ) {
 	  LS[count].cost    = (int) atoi( pch );
 
 	  // Init Basics
-	  LS[count].sock    = 0;
+	  LS[count].srcSock    = 0;
+	  LS[count].dstSock    = 0;
 
 	  // Increment
 	  count++;
@@ -240,11 +240,11 @@ void logTime ( FILE *fp, char *msg ) {
 void printTable( FILE *file, Nodes *LS, int count ) {
   int i;
 
-  fprintf( file, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\tSOCK\n" );
+  fprintf( file, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\tSRCSCK\tDSTSCK\n" );
   for ( i = 0; i < count; ++i ) {
-	fprintf( file, "%s\t%i\t%s\t%i\t%i\t%i\n", 
+	fprintf( file, "%s\t%i\t%s\t%i\t%i\t%i\t%i\n", 
 			 LS[i].src, LS[i].srcPort, LS[i].dst, LS[i].dstPort, LS[i].cost,
-			 LS[i].sock );
+			 LS[i].srcSock, LS[i].dstSock );
   }
 }
 ////////////////////////////////////////////////////////////////////////////////
