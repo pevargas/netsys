@@ -29,7 +29,7 @@
   exit( EXIT_FAILURE );\
 }
 #define PKTSIZ 512
-#define MAX_PENDING 5 
+#define MAX_PENDING 10
 #define MAX_LINE 256 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -69,11 +69,9 @@ int main( int argc, char *argv[] ) {
   int   code;         // Used to check error codes
   FILE  *log;         // My log file
   Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
+  socklen_t length;   // length of client address
+  //char buf[PKTSIZ];   // test message for connection  
 
-  char buf[MAX_LINE]; 
-  int len; 
-  int s, new_s;
-  
   //--------------------------------------
   // Initialization File Set-Up
   //--------------------------------------
@@ -114,52 +112,58 @@ int main( int argc, char *argv[] ) {
   // Opening of the Sockets
   //--------------------------------------
 
-  // neighbor tables
-  // while < ports (in A's case 3)
   for( i = 0; i < count; ++i ) {
 	// Create the sockets
+        LS[i].srcSock = socket(PF_INET, SOCK_STREAM, 0 );
 	LS[i].dstSock = socket( PF_INET, SOCK_STREAM, 0 ); 
 	ERROR( LS[i].dstSock < 0 );
 
 	// Build address data structure
-    bzero( (char *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
+	bzero( (char *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
 	LS[i].dstAddr.sin_family = AF_INET;
 	LS[i].dstAddr.sin_addr.s_addr = INADDR_ANY;
 	LS[i].dstAddr.sin_port = htons( LS[i].dstPort );
-	
-	// Passive Open
-	code = bind( LS[i].dstSock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
-	ERROR( code < 0 );
 
-	// Listening for something
-	listen(s, MAX_PENDING);	
+	// Passive Open (when blind open doesn't work try to passive open and wait)
+	
+	code = bind( LS[i].dstSock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
+	ERROR( code < 0 );	
  
 	printTable( log, LS, count );
+	sleep( rand() % 10 );
 
-	sleep( rand() % 50 );
-	// pull each line from neighbor table for port numbers
-	
-	struct hostent *hp; 
-	char *host; 
-	char buf[MAX_LINE]; 
-	int s; 
-	int len;
-		
-	bzero( (char *) &LS[i].srcAddr, sizeof( LS[i].srcAddr ) ); 
-    LS[i].srcAddr.sin_family = AF_INET; 
-    bcopy( hp->h_addr, (char *) &LS[i].srcAddr.sin_addr, hp->h_length ); 
-    LS[i].srcAddr.sin_port = htons( LS[i].srcPort ); 
- 
-    // active open
-    LS[i].srcSock = socket( PF_INET, SOCK_STREAM, 0 );
-	ERROR( LS[i].srcSock < 0 );
+	bzero((char *)&LS[i].srcAddr, sizeof(LS[i].srcAddr));
+	LS[i].srcAddr.sin_family = AF_INET;
+	LS[i].srcAddr.sin_port = htons(LS[i].srcPort);
 
-	code = connect( LS[i].srcSock, (struct sockaddr *) &LS[i].srcSock, sizeof( LS[i].srcSock ) );
-    perror("simplex-talk: connect"); 
+	listen(LS[i].dstSock, MAX_PENDING);
 
-    exit(1); 
-  } 
-   
+	// active open (blindly try to connect)
+	code = connect( LS[i].srcSock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
+	if (code < 0)
+	  {
+	    perror("simplex-talk: connect"); 
+	  }
+
+	length =  sizeof( LS[i].srcAddr );
+	int n = accept(LS[i].dstSock, (struct sockaddr *) &LS[i].srcAddr, &length);
+       	if(n < 0)
+	{
+	  perror("not connected");
+	}
+	/*  (THIS CODE TESTED THE CONNECTION AND THE CONNECTION WORKS BITCHES!!!!!)
+	if(write(LS[i].srcSock, LS[i].src, PKTSIZ) < 0)
+	  {
+	    perror("cannot write to socket");
+	  }
+	bzero(buf, PKTSIZ);
+	if(read(n, buf, PKTSIZ) < 0)
+	  {
+	    perror("cannot read from socket");
+	  }
+	printf("the source router is %s\n", buf);
+	*/
+    }
   // Close Sockets
   for ( i = 0; i < count; ++i ) {
 	close( LS[i].srcSock ); 
