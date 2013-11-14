@@ -46,6 +46,16 @@ typedef struct {
   struct sockaddr_in dstAddr; // The socket address for destination
   unsigned int dstLen;        // Length of destination socket
 } Nodes;
+
+typedef struct {         // Link State Packet (pg. 253)
+  char src[PKTSIZ];      // Name of the original creator of this packet
+  struct path_slot {     // One slot in the list
+	char node[PKTSIZ];   // Node the packet was at
+	int cost[PKTSIZ];    // Cost to that node
+  } path[PKTSIZ];        // Array to keep track of where the packet has been
+  float seqnum; // Sequence number of packet
+  int ttl;               // Time to live
+} LSP;                   // Link State Packet
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
