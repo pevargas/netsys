@@ -72,14 +72,15 @@ void printTable( FILE *file, Nodes *LS, int count );
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char *argv[] ) {
   // Variables
-  char  *src;         // My Name
-  char  msg[PKTSIZ];  // Message for the log
-  int   count = 0;    // My number of neighbors
-  int   i;            // Iterator
-  int   code;         // Used to check error codes
-  FILE  *log;         // My log file
-  Nodes LS[PKTSIZ];   // A struct to hold my connections to my neighbors
-  socklen_t length;   // length of client address
+  char  *src;           // My Name
+  char  msg[PKTSIZ];    // Message for the log
+  int   count = 0;      // My number of neighbors
+  int   i;              // Iterator
+  int   code;           // Used to check error codes
+  FILE  *log;           // My log file
+  Nodes LS[PKTSIZ];     // A struct to hold my connections to my neighbors
+  socklen_t length;     // Length of client address
+  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
   //char buf[PKTSIZ];   // test message for connection  
 
   //--------------------------------------
@@ -174,6 +175,27 @@ int main( int argc, char *argv[] ) {
 	printf("the source router is %s\n", buf);
 	*/
     }
+
+  //while loop for LSP broadcasting and routing table convergence
+  while(stabilized == 0)
+    {
+      // loop through each neighbor
+      
+      // Set LSP
+
+      // Send LSP
+
+      // listen for LSP's
+              // If LSP recieved, update routing table as necessary, set routing table update to 0 (routing table update is global value, or global to the while loop... not specific for each neighbor in the node)
+              // IF no LSP recieved, add 1 to Routing table update value
+      // Wait random amount of time
+      
+      // end loop through neighbors
+
+      //if router table update value  > 5 set stabilized to 1
+
+    }
+
   // Close Sockets
   for ( i = 0; i < count; ++i ) {
 	close( LS[i].srcSock ); 
