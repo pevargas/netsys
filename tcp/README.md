@@ -1,14 +1,11 @@
-Go-Back N, Sliding Windows and Window-Based Flow Control Assignment
-===================================================================
+Link State Routing
+==================
 
-The purpose of this program is to transfer a file from the client to the server. The send is implmented through a window-based scheme. Packets with header information and data are sent to the server and an acknowledgment is sent back. In general, the purpose of this assignment is to gain:  
+The purpose of this assignment is to:
 
-
-1.  An understanding of reliable transmission transport layer protocols
-2.  An understanding of cumulative acknowledgements
-3.  An understanding of sliding windows
-4.  An understanding of sequencing packets 
-5.  An understanding of flow control
+* learn how to establish and maintain TCP connections
+* learn how distributed dynamic routing protocols accomplish packet routing
+* implement a link state routing protocol
 
 Group
 -----
@@ -28,51 +25,38 @@ Group
 Included Files
 --------------
 
-1. GBNclient.c
-2. GBNserver.c
-3. makefile
-4. README.txt (this file)
+1. routed_LS.c
+2. test
+3. ports
+4. makefile
+5. README.txt (this file)
 
 Commands
 --------
 ### To Run the Program ###
 
-1. Create the executables `GBNclient` and `GBNserver` with the following command:  
+1. Create the executable `routed_LS` with the following command:  
 
 	  	make
 
-2. Run the server program, replacing <server_port> with a number between 1024 and 65535, <error_rate> is between 0 and 1, <random_seed> is NULL for allways random or a constant to repeat the sequence, <output_fil> is the name of the recieved file and <recieve_log> is the name of the log file for the server:
+2. Run the test script to see the program in action.
 
-	 	./GBNserver <server_port> <error_rate> <random_seed> <output_file> <receive_log>
+   	    ./test
 
-3. Run `hostname -i` to get the IP address of the server. Open up a new terminal. Use the found address and the port number you used in the following command in the new terminal, <error_rate> is between 0 and 1, <random_seed> is NULL for allways random or a constant to repeat teh sequence, <send_file> is the name of the file to be sent and <send_log> is the name of the log file for the client.:
+3. While test is running run the ports script to see the connections being used.
 
-	 	./GBNclient <server_ip_address> <server_port> <error_rate> <random_seed> <send_file> <send_log>
+   		./ports
 
 ### Other Useful Commands ###
 
 1. `make clean` to create clean workspace.
 
-Acknowledgments
----------------
+Notes
+-----
 
-This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 2 - Go-Back N, Sliding Windows and Window-Based Flow Control", University of Colorado Boulder. Our implementation builds upon the tar file given to us as well as our previous assignment, "User Datagram Protocol Assignment".
-
-Which of the following functions work
--------------------------------------
-
-- [ ] Reliably transfer a data file between a client and server despite possible packet losses (packet error rate will vary during our testing to evaluate the correctness of your protocol implementation)
-- [X] Sliding windows at both the client and server, with cumulative acknowledgements
-- [X] Timeouts with retransmission
-- [X] Discarding of out­of­range packets
-- [X] Buffering out­of­order packets
-
+Since we couldn't get the TCP connections working, the rest of the program also failed. We did however flush out that code so if we did get it working, the rest might of worked.
 
   [w]: http://www.vargascorpus.com/
   [e2]: mailto:patrick.vargas@colorado.edu
   [e1]: mailto:b.grace.harsha@gmail.com
 
-Notes
------
-
-We were able to get the window going. For some reason, our output file is off by one byte. In addition, our sliding window logic does not handle the packet losses. It does however discard ourt-of-range packets and buffers out-of-order packets. It also has the timeout set and works. Our logic for recieving duplicate acks is where we are failing. 
