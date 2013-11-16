@@ -98,14 +98,16 @@ int main( int argc, char *argv[] ) {
   char  *src;           // My Name
   char  msg[MAXLINE];   // Message for the log
   int   count = 0;      // My number of neighbors
-  int   i;              // Iterator
+  int   i,j,k;            // Iterator
   int   code;           // Used to check error codes
   char  *log;           // My log file
   Nodes net[MAXROUTE];  // A struct to hold my connections to my neighbors
   RoutingTable rt;      // Routing Table
-  //  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
-    char buf[MAXLINE];    // test message for connection  
-  //  char buf[sizeof(LSP)];    // test message for connection  
+  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
+  int update = 0;       // Route Table Update Value
+  //char buf[MAXLINE];    // test message for connection  
+  char buf[sizeof(LSP)];    // test message for connection  
+  
   float seqnum = 0;     // Our sequence number
   LSP send, recv;       // Link state packets we send and received
 
@@ -214,40 +216,76 @@ int main( int argc, char *argv[] ) {
   //--------------------------------------
   // The Sending of the Link State Packets
   //--------------------------------------
-  //  while ( stabilized == 0 ) {
-  // loop through each neighbor
-  for ( i = 0; i < count; ++i ) {
-	// Set up Link State Packet
-	send.ttl = MAXHOP;
-	send.seqnum = seqnum++;
-	strcpy( send.src, src );
-	send.route.cst = net[i].cost;
-	strcpy( send.route.dst, net[i].dst.name );
-	strcpy( send.route.nxt, net[i].src.name );	
-	//	printLSP( log, &send );
+  while ( stabilized == 0 ) {
+	// loop through each neighbor
+	for ( i = 0; i < count; ++i ) {
+	  // Set up Link State Packet
+	  send.ttl = MAXHOP;
+	  send.seqnum = seqnum++;
+	  strcpy( send.src, src );
+	  send.route.cst = net[i].cost;
+	  strcpy( send.route.dst, net[i].dst.name );
+	  strcpy( send.route.nxt, net[i].src.name );	
+	  
+	  // Send LSP
+	  memcpy( &buf, &send, sizeof( LSP ) );
+	  code = write( net[i].src.sock, buf, MAXLINE); ERROR( code < 0 );
+	  sprintf( msg, "Sent Link State Packet to router %s\n", net[i].dst.name );
+	  logTime( log, msg );
+	  printLSP( log, &send );	  
 
-	// Send LSP
-	code = write( net[i].src.sock, src, MAXLINE); ERROR( code < 0 );
+	  // listen for LSP's
+	  bzero( buf, MAXLINE );
+	  code = read( net[i].src.newsock, buf, MAXLINE ); ERROR( code < 0 );
+	  memcpy( &recv, &buf, sizeof( LSP ) );
+	  sprintf( msg, "Recieved Link State Packet from router %s\n", recv.src );
+	  logTime( log, msg );
+	  printLSP( log, &recv );	  
 
-	// listen for LSP's
-	bzero( buf, MAXLINE );
-	code = read( net[i].src.newsock, buf, MAXLINE ); ERROR( code < 0 );
+	  //     If LSP recieved, update routing table as necessary, set routing table update to 
+	  //     0 (routing table update is global value, or global to the while loop... not 
+	  //     specific for each neighbor in the node)
+	  for ( j = 0; j < rt.total; ++j ) {
+		if ( strcmp( rt.route[j].dst, recv.route.dst ) == 0 ) {
+		  if ( rt.route[j].cst > recv.route.cst ) {
+			strcpy( rt.route[j].dst, recv.route.dst);
+			strcpy( rt.route[j].nxt, recv.route.nxt );
+			rt.route[j].cst = recv.route.cst;
+			rt.route[j].ttl = MAXTTL;			
+		  }
+		}
+		else {
+		  strcpy( rt.route[rt.total++].dst, recv.route.dst);
+		  strcpy( rt.route[rt.total].nxt, recv.route.nxt );
+		  rt.route[rt.total].cst = recv.route.cst;
+		  rt.route[rt.total].ttl = MAXTTL;
+		}
+		update++;
+	  }
+
+	  //     If no LSP recieved, add 1 to Routing table update value
+	  // Wait random amount of time
+	  sleep( rand() % 10 );	  
+	  printRoutingTable( log, &rt );
+	} // end loop through neighbors
 	
-	sprintf( msg, "Recieved message from router %s\n", buf );
-	logTime( log, msg );
-
-	//     If LSP recieved, update routing table as necessary, set routing table update to 
-	//     0 (routing table update is global value, or global to the while loop... not 
-	//     specific for each neighbor in the node)
-	//     If no LSP recieved, add 1 to Routing table update value
-	// Wait random amount of time
-	sleep( rand() % 10 );
-	
-	// end loop through neighbors
-	}
 	//if router table update value  > 5 set stabilized to 1
+	if( update > 5 ) stabilized = 1;
 
-	//  }
+	// Update Routing Table
+	for ( j = 0; j < rt.total; ++j ) {
+	  if ( --rt.route[i].ttl == 0 ) {
+		for ( k = j; k < rt.total-1; ++k ) {
+		  strcpy( rt.route[k].dst, rt.route[k + 1].dst ); 
+		  strcpy( rt.route[k].nxt, rt.route[k + 1].nxt ); 
+		  rt.route[k].cst = rt.route[k + 1].cst; 
+		  rt.route[k].ttl = rt.route[k + 1].ttl; 
+		}
+		rt.total--;
+	  }
+	}
+	printRoutingTable( log, &rt );
+  }
 
   // Close Sockets
   for ( i = 0; i < count; ++i ) {
@@ -347,6 +385,8 @@ void printLSP( char *file, LSP *packet ) {
 		   packet->route.dst, packet->route.nxt, packet->route.cst, packet->ttl );
   fclose( log );
 }
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 // Print the LS table
 void printRoutingTable( char *file, RoutingTable *rt ) {
