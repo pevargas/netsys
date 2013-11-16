@@ -33,6 +33,7 @@
 #define MAXLINE     256 
 #define MAXROUTE    10
 #define MAXPATH     MAXROUTE*3
+#define MAXTTL      120
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,11 +63,14 @@ typedef struct {         // Link State Packet (pg. 253)
 } LSP;                   // Link State Packet
 
 typedef struct {
-  char dest[MAXLINE]; // Address of Destination
-  char next[MAXLINE]; // Address of next hop
-  int  cost;          // Distance Metric
-  int  ttl;           // Time to Live
-} Route;
+  int total;           // The total number of nodes
+  struct {
+	char dst[MAXLINE]; // Address of Destination
+	char nxt[MAXLINE]; // Address of next hop
+	int  cst;          // Distance Metric
+	int  ttl;          // Time to Live
+  } route[MAXROUTE];   // List of al lthe routes
+} RoutingTable;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,10 +78,13 @@ typedef struct {
 void logTime ( char *fp, char *msg );
 
 // Read in the initialization Text file and only store information for my node
-int getNeighbors( char *file, Nodes *LS, char *src );
+int getNeighbors( char *file, Nodes *net, char *src );
 
-// Print the LS table
-void printTable( char *file, Nodes *LS, int count );
+// Print the routing table
+void printRoutingTable( char *file, RoutingTable *rt );
+
+// Print connection table
+void printTable( char *file, Nodes *net, int count );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,8 +96,8 @@ int main( int argc, char *argv[] ) {
   int   i;              // Iterator
   int   code;           // Used to check error codes
   char  *log;           // My log file
-  Nodes net[MAXROUTE];   // A struct to hold my connections to my neighbors
-  Route RT[MAXROUTE];   // Routing Table
+  Nodes net[MAXROUTE];  // A struct to hold my connections to my neighbors
+  RoutingTable rt;      // Routing Table
   socklen_t length;     // Length of client address
   int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
   char buf[MAXLINE];    // test message for connection  
@@ -130,6 +137,19 @@ int main( int argc, char *argv[] ) {
   }
 
   printTable( log, net, count );
+
+  //--------------------------------------
+  // Update Routing Table
+  //--------------------------------------
+  for ( i = 0; i < count; ++i ) {
+	strcpy( rt.route[i].dst, net[i].dst.name );
+	strcpy( rt.route[i].nxt, net[i].dst.name );
+	rt.route[i].cst = net[i].cost;
+	rt.route[i].ttl = MAXTTL;
+  }
+  rt.total = count;
+
+  printRoutingTable( log, &rt );
 
   //--------------------------------------
   // Opening of the Sockets
@@ -244,12 +264,15 @@ int main( int argc, char *argv[] ) {
       //if router table update value  > 5 set stabilized to 1
 
 	  }
-
+		*/
   // Close Sockets
   for ( i = 0; i < count; ++i ) {
-	close( net[i].sock ); 
-	close( LS[i].newsock ); 
-	}*/
+	close( net[i].src.sock );
+	close( net[i].dst.sock ); 
+	//close( LS[i].newsock ); 
+	sprintf( msg, "(%s <==> %s) Closed sockets\n", net[i].src.name, net[i].dst.name );
+	logTime( log, msg );	
+  }
   sprintf( msg, "Finished running for router %s\n", src );
   logTime( log, msg );
 
@@ -326,10 +349,34 @@ void logTime ( char *fp, char *msg ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Print the LS table
+void printRoutingTable( char *file, RoutingTable *rt ) {
+  int i;
+  FILE *log;
+  char msg[MAXLINE];
+  
+  sprintf( msg, "Printing routing table\n" );
+  logTime( file, msg );
+    
+  log = fopen( file, "a" ); ERROR( log < 0 );
+  fprintf( log, "DEST\tNEXT\tCOST\tTTL\n" );
+  for ( i = 0; i < rt->total; ++i ) {
+	fprintf( log, "%s\t%s\t%i\t%i\n", 
+			 rt->route[i].dst, rt->route[i].nxt, rt->route[i].cst, rt->route[i].ttl );
+  }
+  fclose( log );
+}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Print connection table
 void printTable( char *file, Nodes *net, int count ) {
   int i;
   FILE *log;
+  char msg[MAXLINE];
   
+  sprintf( msg, "Printing connection table\n" );
+  logTime( file, msg );
+
   log = fopen( file, "a" ); ERROR( log < 0 );
   fprintf( log, "SRC\tSRCPRT\tDST\tDSTPRT\tCOST\tSRCSCK\tDSTSCK\n" );
   for ( i = 0; i < count; ++i ) {
