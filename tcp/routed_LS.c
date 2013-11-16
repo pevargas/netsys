@@ -104,11 +104,10 @@ int main( int argc, char *argv[] ) {
   Nodes net[MAXROUTE];  // A struct to hold my connections to my neighbors
   RoutingTable rt;      // Routing Table
   //  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
-  //  char buf[MAXLINE];    // test message for connection  
-  char buf[sizeof(LSP)];    // test message for connection  
+    char buf[MAXLINE];    // test message for connection  
+  //  char buf[sizeof(LSP)];    // test message for connection  
   float seqnum = 0;     // Our sequence number
   LSP send, recv;       // Link state packets we send and received
-  struct hostent *server;
 
   //--------------------------------------
   // Initialization File Set-Up
@@ -163,122 +162,98 @@ int main( int argc, char *argv[] ) {
   //--------------------------------------
   for ( i = 0; i < count; ++i ) {
 	// Create the sockets
-	net[i].src.sock = socket( AF_INET, SOCK_STREAM, 0 ); ERROR( net[i].src.sock < 0 );
-	net[i].dst.sock = socket( AF_INET, SOCK_STREAM, 0 ); ERROR( net[i].src.sock < 0 );
+	net[i].src.sock = socket( PF_INET, SOCK_STREAM, 0 ); ERROR( net[i].src.sock < 0 );
+	net[i].dst.sock = socket( PF_INET, SOCK_STREAM, 0 ); ERROR( net[i].dst.sock < 0 );
 
 	sprintf( msg, "(%s <==> %s) Creating sockets\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );
-	printTable( log, net, count );
-
-	server = gethostbyname( "localhost" );
-	ERROR( server == NULL );
-
-	sprintf( msg, "(%s <==> %s) Got server address\n", net[i].src.name, net[i].dst.name );
-	logTime( log, msg );   
 	
 	// Build destination address data structure
 	net[i].dst.len = sizeof( net[i].dst.addr );
 	bzero( (char *) &net[i].dst.addr, net[i].dst.len );
 	net[i].dst.addr.sin_family      = AF_INET;
-	bcopy( (char *) server->h_addr,
-		   (char *) &net[i].dst.addr.sin_addr.s_addr,
-		   server->h_length );
+	net[i].dst.addr.sin_addr.s_addr = INADDR_ANY;
  	net[i].dst.addr.sin_port        = htons( net[i].dst.port );
 		
 	sprintf( msg, "(%s <==> %s) Built destination address\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );
 
+	// Bind the socket to the address (Passive Open)
+	code = bind( net[i].dst.sock, (struct sockaddr *) &net[i].dst.addr, net[i].dst.len);
+	ERROR( code < 0 );
+	
+	sprintf( msg, "(%s <==> %s) Bound the source socket\n", net[i].src.name, net[i].dst.name );
+	logTime( log, msg );
+	sleep( rand() % 10 );
+
 	// Build source address data structure
 	net[i].src.len = sizeof( net[i].src.addr );
 	bzero( (char *) &net[i].src.addr, net[i].src.len );
 	net[i].src.addr.sin_family      = AF_INET;
-    net[i].src.addr.sin_addr.s_addr = INADDR_ANY;
+	//    net[i].src.addr.sin_addr.s_addr = INADDR_ANY;
 	net[i].src.addr.sin_port        = htons( net[i].src.port );
 
 	sprintf( msg, "(%s <==> %s) Built source address\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );
 
-	// Bind the socket to the address
-	code = bind( net[i].src.sock, (struct sockaddr *) &net[i].src.addr, net[i].src.len);
+	// Active open
+	listen( net[i].dst.sock, MAX_PENDING );
+	code = connect( net[i].src.sock, (struct sockaddr *) &net[i].dst.addr, net[i].dst.len );
 	ERROR( code < 0 );
-	
-	sprintf( msg, "(%s <==> %s) Bound the source socket\n", net[i].src.name, net[i].dst.name );
+	sprintf( msg, "(%s <==> %s) Made active connection\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );
+
+	net[i].src.newsock = accept( net[i].dst.sock, (struct sockaddr *) &net[i].src.addr, &net[i].src.len );
+	ERROR( net[i].src.newsock < 0 );
+	sprintf( msg, "(%s <==> %s) Accepted active connection\n", net[i].src.name, net[i].dst.name );
+	logTime( log, msg );
+	
+	printTable( log, net, count );
   }
 
-  printTable( log, net, count );
-
-
   //--------------------------------------
-  // Sending of the initial Link State Packets
+  // The Sending of the Link State Packets
   //--------------------------------------
-  for( i = 0; i < count; ++i ) {
+  //  while ( stabilized == 0 ) {
+  // loop through each neighbor
+  for ( i = 0; i < count; ++i ) {
 	// Set up Link State Packet
 	send.ttl = MAXHOP;
 	send.seqnum = seqnum++;
 	strcpy( send.src, src );
 	send.route.cst = net[i].cost;
 	strcpy( send.route.dst, net[i].dst.name );
-	strcpy( send.route.nxt, net[i].src.name );
+	strcpy( send.route.nxt, net[i].src.name );	
+	//	printLSP( log, &send );
 
-	printLSP( log, &send );
+	// Send LSP
+	code = write( net[i].src.sock, src, MAXLINE); ERROR( code < 0 );
 
-  }
- /*
-  for( i = 0; i < count; ++i ) {
-	sleep( rand() % 10 );
-
-	bzero( (char *) &LS[i].srcAddr, sizeof( LS[i].srcAddr ) );
-	LS[i].srcAddr.sin_family = AF_INET;
-	LS[i].srcAddr.sin_port   = htons( LS[i].srcPort );
-
-	// Passive Open (when blind open doesn't work try to passive open and wait)
-	listen( LS[i].sock, MAX_PENDING );
-
-	// active open (blindly try to connect)
-	code = connect( LS[i].sock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
-	ERROR( code < 0 );
-
-	length =  sizeof( LS[i].srcAddr );
-	LS[i].newsock = accept( LS[i].sock, (struct sockaddr *) &LS[i].srcAddr, &length);
-   	ERROR( LS[i].newsock < 0 );
+	// listen for LSP's
+	bzero( buf, MAXLINE );
+	code = read( net[i].src.newsock, buf, MAXLINE ); ERROR( code < 0 );
 	
-	//  (THIS CODE TESTED THE CONNECTION AND THE CONNECTION WORKS BITCHES!!!!!)
-	code = write( LS[i].newsock, LS[i].src, MAXLINE );
-	ERROR( code < 0 );
+	sprintf( msg, "Recieved message from router %s\n", buf );
+	logTime( log, msg );
 
-	bzero(buf, PKTSIZ);
-	code = read( LS[i].newsock, buf, MAXLINE );
-	ERROR( code < 0 );
+	//     If LSP recieved, update routing table as necessary, set routing table update to 
+	//     0 (routing table update is global value, or global to the while loop... not 
+	//     specific for each neighbor in the node)
+	//     If no LSP recieved, add 1 to Routing table update value
+	// Wait random amount of time
+	sleep( rand() % 10 );
+	
+	// end loop through neighbors
+	}
+	//if router table update value  > 5 set stabilized to 1
 
-	printf( "the source router is %s\n", buf );	
-  }
-*/
-  //while loop for LSP broadcasting and routing table convergence
-		/*  while(stabilized == 0)
-    {
-      // loop through each neighbor
-      
-      // Set LSP
+	//  }
 
-      // Send LSP
-
-      // listen for LSP's
-              // If LSP recieved, update routing table as necessary, set routing table update to 0 (routing table update is global value, or global to the while loop... not specific for each neighbor in the node)
-              // IF no LSP recieved, add 1 to Routing table update value
-      // Wait random amount of time
-      
-      // end loop through neighbors
-
-      //if router table update value  > 5 set stabilized to 1
-
-	  }
-		*/
   // Close Sockets
   for ( i = 0; i < count; ++i ) {
 	close( net[i].src.sock );
 	close( net[i].dst.sock ); 
-	//close( LS[i].newsock ); 
+	close( net[i].src.newsock ); 
 	sprintf( msg, "(%s <==> %s) Closed sockets\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );	
   }
