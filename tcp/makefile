@@ -20,6 +20,8 @@ deploy:
 	@mkdir harsha_vargas_tcp;
 	@cp routed_LC.c harsha_vargas_tcp;
 	@cp makefile harsha_vargas_tcp;
+	@cp test harsha_vargas_tcp;
+	@cp ports harsha_vargas_tcp;
 	@cp README.md harsha_vargas_tcp/README.txt;
 	@tar -cvf harsha_vargas_tcp.tar harsha_vargas_tcp;
 
