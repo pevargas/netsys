@@ -34,6 +34,7 @@
 #define MAXROUTE    10
 #define MAXPATH     MAXROUTE*3
 #define MAXTTL      120
+#define MAXHOP      2
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,15 +53,16 @@ typedef struct {
   Wire dst;                // My neighbor
 } Nodes;
 
-typedef struct {         // Link State Packet (pg. 253)
-  char src[MAXLINE];     // Name of the original creator of this packet
-  struct path_slot {     // One slot in the list
-	char node[MAXROUTE];  // Node the packet was at
-	int cost[MAXROUTE];   // Cost to that node
-  } path[MAXPATH];       // Array to keep track of where the packet has been
-  float seqnum;          // Sequence number of packet
-  int ttl;               // Time to live
-} LSP;                   // Link State Packet
+typedef struct {       // Link State Packet (pg. 253)
+  int ttl;             // Time to live for this packet
+  float seqnum;        // Sequence number of packet
+  char src[MAXLINE];   // Name of the original creator of this packet
+  struct {               
+	int cst;          // The total cost of the path
+	char dst[MAXLINE]; // The destination node in the routing table
+	char nxt[MAXLINE]; // The name of the node to send to to get there
+  } route;             // The route we're advertising
+} LSP;                 // Link State Packet
 
 typedef struct {
   int total;           // The total number of nodes
@@ -80,6 +82,9 @@ void logTime ( char *fp, char *msg );
 // Read in the initialization Text file and only store information for my node
 int getNeighbors( char *file, Nodes *net, char *src );
 
+// Print Link State Packet
+void printLSP( char *file, LSP *packet );
+
 // Print the routing table
 void printRoutingTable( char *file, RoutingTable *rt );
 
@@ -98,9 +103,11 @@ int main( int argc, char *argv[] ) {
   char  *log;           // My log file
   Nodes net[MAXROUTE];  // A struct to hold my connections to my neighbors
   RoutingTable rt;      // Routing Table
-  socklen_t length;     // Length of client address
-  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
-  char buf[MAXLINE];    // test message for connection  
+  //  int stabilized;       // Used to determine when routing table is done converging on lowest cost pathes
+  //  char buf[MAXLINE];    // test message for connection  
+  char buf[sizeof(LSP)];    // test message for connection  
+  float seqnum = 0;     // Our sequence number
+  LSP send, recv;       // Link state packets we send and received
   struct hostent *server;
 
   //--------------------------------------
@@ -166,7 +173,7 @@ int main( int argc, char *argv[] ) {
 	server = gethostbyname( "localhost" );
 	ERROR( server == NULL );
 
-	sprintf( msg, "(%s <==> %s) Got server address (%s)\n", net[i].src.name, net[i].dst.name, server->h_addr );
+	sprintf( msg, "(%s <==> %s) Got server address\n", net[i].src.name, net[i].dst.name );
 	logTime( log, msg );   
 	
 	// Build destination address data structure
@@ -201,22 +208,24 @@ int main( int argc, char *argv[] ) {
 
   printTable( log, net, count );
 
+
+  //--------------------------------------
+  // Sending of the initial Link State Packets
+  //--------------------------------------
+  for( i = 0; i < count; ++i ) {
+	// Set up Link State Packet
+	send.ttl = MAXHOP;
+	send.seqnum = seqnum++;
+	strcpy( send.src, src );
+	send.route.cst = net[i].cost;
+	strcpy( send.route.dst, net[i].dst.name );
+	strcpy( send.route.nxt, net[i].src.name );
+
+	printLSP( log, &send );
+
+  }
  /*
   for( i = 0; i < count; ++i ) {
-	// Create the sockets
-	LS[i].sock = socket( AF_INET, SOCK_STREAM, 0 );
-	ERROR( LS[i].sock < 0 );
-	
-	// Build address data structure
-	bzero( (char *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
-	LS[i].dstAddr.sin_family      = AF_INET;
-	LS[i].dstAddr.sin_addr.s_addr = INADDR_ANY;
-	LS[i].dstAddr.sin_port        = htons( LS[i].dstPort );
-
-	code = bind( LS[i].sock, (struct sockaddr *) &LS[i].dstAddr, sizeof( LS[i].dstAddr ) );
-	ERROR( code < 0 );	
- 
-	printTable( log, LS, count );
 	sleep( rand() % 10 );
 
 	bzero( (char *) &LS[i].srcAddr, sizeof( LS[i].srcAddr ) );
@@ -347,6 +356,22 @@ void logTime ( char *fp, char *msg ) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Print Link State Packet
+void printLSP( char *file, LSP *packet ) {
+  FILE *log;
+  char msg[MAXLINE];
+  
+  sprintf( msg, "Printing %s's Link State Packet No. %f\n", 
+		   packet->src, packet->seqnum );
+  logTime( file, msg );
+    
+  log = fopen( file, "a" ); ERROR( log < 0 );
+  fprintf( log, "DEST\tNEXT\tCOST\tTTL\n" );
+  fprintf( log, "%s\t%s\t%i\t%i\n", 
+		   packet->route.dst, packet->route.nxt, packet->route.cst, packet->ttl );
+  fclose( log );
+}
 ////////////////////////////////////////////////////////////////////////////////
 // Print the LS table
 void printRoutingTable( char *file, RoutingTable *rt ) {
