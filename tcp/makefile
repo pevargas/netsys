@@ -18,7 +18,7 @@ routed_LS:
 
 deploy:
 	@mkdir harsha_vargas_tcp;
-	@cp routed_LC.c harsha_vargas_tcp;
+	@cp routed_LS.c harsha_vargas_tcp;
 	@cp makefile harsha_vargas_tcp;
 	@cp test harsha_vargas_tcp;
 	@cp ports harsha_vargas_tcp;
