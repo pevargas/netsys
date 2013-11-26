@@ -14,7 +14,7 @@ Requirements
 * Implement a file location server over TCP (server_PFS)
 * Implement a peer to peer file distribution service over TCP (client_PFS)
 
-In this assignment you will create a peer to peer file distribution service.  In order to locate files and peers you will also implement a file location server.  Each client will register its name and its list files with the location server.  The location server distributes the complete list of filenames and fi locations to each client.  Clients then go directly to peers to obtain the file they desire.
+In this assignment you will create a peer to peer file distribution service.  In order to locate files and peers you will also implement a file location server.  Each client will register its name and its list files with the location server.  The location server distributes the complete list of filenames and file locations to each client.  Clients then go directly to peers to obtain the file they desire.
 
 Graduate/CAETE Requirements
 ---------------------------
@@ -44,7 +44,7 @@ File Location Server
 
 There will be one file location server listening running on a known address.  The file location server will receive client names and reject client names already in use. Then the file location server will receive file lists from each client and compile them into one master file list.  The master file list contains the filenames, file size and file locations (client name / IP Address / Port Address) of files and is distributed to all registered clients.  The master file list is pushed out to all registered clients whenever the list changes. As clients start up they register with the file location server and add their file list to the file location server.  As clients shut down their files are removed from the master file list.  When the file server receives an “ls” command it returns the current master file list to the request originator.
 
-*** Usage ***
+### Usage
 
 	./server_PFS <Port Number>
 
@@ -57,27 +57,27 @@ Clients
 
 * Register name with file location server
 * Register files with file location server
-* Request master file list from file location server ­ ‘ls’
+* Request master file list from file location server `ls`
 * Print master file list
-* Get file from another client ­ ‘get’
+* Get file from another client `get`
 * Provide file to another client
-* Exit current client ­ ‘exit’
+* Exit current client `exit`
 
 There will be n clients (must handle 3 or more) executing identical code.  Each client will startup and open a listening TCP for incoming ‘get’ requests.Then the client will register its name with the file location server.  No two clients can register with the same name.  Therefore if the server returns that this name already exists then the client just exits.  The client then sends its list of files  and their sizes to the the file location server.The file location server then returns the master file list and this is printed out to the client terminal.  If the master file list is updated at the file location server it will be pushed out to the client and the client should print the new file list to the terminal.  Once the client startup process is complete the user can:
 
-1. request a new list of files from the file location server using the ‘ls’ command and print this to the terminal  request.
-2. request a file directly from a peer client using the master list obtained from the file location server using the ‘get’ command.  After file is received close this connection.
-3. exit using the ‘exit’ command 
+1. request a new list of files from the file location server using the `ls` command and print this to the terminal  request.
+2. request a file directly from a peer client using the master list obtained from the file location server using the `get` command.  After file is received close this connection.
+3. exit using the `exit` command 
 
 Please execute clients in separate directories if testing on the same machine.  Transferred file must be identical to orginal file.  md5sum <filename> profides of hash of the file, which can be used to quickly compare two files.
 
-*** Usage ***
+### Usage
 
-	$ ./client_PFS <Client Name> <Server IP> <Server Port>
+	./client_PFS <Client Name> <Server IP> <Server Port>
 
 or
 
-	$ ./client_PFS <Client Name> <Server IP> <Server Port> <Private Key of this Client> <Certificate of this Client> <CA Cert>
+	./client_PFS <Client Name> <Server IP> <Server Port> <Private Key of this Client> <Certificate of this Client> <CA Cert>
 
 Master File List
 ----------------
@@ -92,11 +92,11 @@ Please print out the master file list as follows
 Certificates (Mandatory for Graduate Students / E.C. for Undergrad)
 -------------------------------------------------------------------
 
-*** Certificate Creation ***
+### Certificate Creation
 
 Usually you would receive your signed public key certificate from a well­known and trusted Certificate Authority (e.g. VeriSign, GlobalSign, GoDaddy, etc.). However for the purposes of this assignment, you (the student) will be considered a well­known and trusted authority (only within the domain of this assignment of course).
 
-*** Here is what you will need to generate ***
+### Here is what you will need to generate
 
 CA certificate – this is the CA’s public certificate that’s used to validate security certificates that have been signed by the CA. The file corresponding to this certificate is cacert.pem (in ./demoCA) Signed Certificate: This is your certificates signed by the CA which include a public key. This corresponds to the file clientX.cert or server.cert (in your temporary directory). Private Key: These are the corresponding private keys to the public keys contained in each signed certificate.  They are needed to initiate public key cryptography. You should put these files with the source code of your project so you don’t lose them (you will be turning them in with your assignment). NOTE: DO NOT COPY OTHER STUDENTS private keys/security certificates/public keys. This will be considered plagiarism. Note: Include your files with the source code of your project so you don’t lose them (you will be turning them in with your assignment). NOTE: DO NOT COPY OTHER STUDENTS private keys/security certificates/public keys. This will be considered plagiarism. If you want to know more about what you just did (or set more configuration options – there are a lot of pieces of information you can attach to a CA certificate), you can look at some of these websites:
 
@@ -104,7 +104,7 @@ CA certificate – this is the CA’s public certificate that’s used
 * http://www.freebsdmadeeasy.com/tutorials/freebsd/create­a­ca­with­openssl.php
 * Quick OpenSSL command line reference: http://wiki.samat.org/CheatSheet/OpenSSL
 
-*** Certificate Authority Setup ***
+### Certificate Authority Setup
 
 In order to generate a CA for yourself, here’s what you should do.
 
@@ -119,7 +119,7 @@ You will be prompted for several pieces of information, such as state
 
 Congratulations! You’ve just created your CA’s private key (cakey.pem) and public certificate (cacert.pem), thereby making you a Certified Authority!  Your cacert.pem must be included in your submission in order to verify certificates.
 
-*** Private Key / Cert Pairs0 ***
+### Private Key / Cert Pairs0 
 
 Now you must generate a public/private key pair for each process to communicate. The public key will be packed inside what is known as a “Certificate Signing Request” (CSR), which is a special type of file that is given to the CA. Once the CA signs it, it becomes a full blown Security Certificate which can be verified using the CA certificate (cacert.pem). In order to generate your public/private keypair, type the following command in your terminal:
 
@@ -127,7 +127,7 @@ Now you must generate a public/private key pair for each process to 
 
 No challenge password or optional company name are needed but your location must match the ca location because we are self­signing certificates.  Enter through these prompts.  This generates a CSR and the corresponding private key.  You should generate individual certificates for each client and the file location server and name them correspondingly.  Please follow these naming conventions (for this assignment).  clientX_priv.key or server_priv.csr where X is the name of a client. 
 
-*** Signing the CSR as a CA ***
+### Signing the CSR as a CA 
 
 As the CA, you can now sign the server’s public key with your private key, turning it into a Security Certificate. To sign the CSR, type the following in the terminal:
 
@@ -142,7 +142,7 @@ Now that you have generated private keys and certificates (including a
 
 	http://h71000.www7.hp.com/doc/83final/ba554_90007/ch04.html
 
-*** Verification ***
+### Verification 
 
 See "Setting Up Peer Certificate Verification"
 
@@ -177,11 +177,9 @@ You should submit all of the above to the Moodle by the deadline. T
 * clients are able to connect to the server via TCP
 * clients connect and disconnect from peers appropriately in order to retrieve files
 * clients can execute the commands above (‘ls’,’get’,’exit’)
-
-	*‘ls’ retrieves latest file list and prints to console
-	*‘get’ retrieves file directly from peer
-	*‘exit’ exits client
-
+	*`ls` retrieves latest file list and prints to console
+	*`get` retrieves file directly from peer
+	*`exit` exits client
 * server adds to and removes from master file list appropriately
 * server provides a master file list to all clients
 * grad students: certificate creation using the openSSL command line tool

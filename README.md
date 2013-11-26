@@ -26,6 +26,15 @@ Directories
 * learn how distributed dynamic routing protocols accomplish packet routing
 * implement a link state routing protocol
 
+This assignment was done in conjunction with [Brittany Harsha][e2].
+
+### p2p/
+
+* Implement a file location server over TCP
+* Implement a peer to peer file distribution service over TCP
+
+The purpose of this assignment is to create a peer to peer file distribution service. Each client will register its name and its list files with the location server.  The location server distributes the complete list of filenames and file locations to each client.  Clients then go directly to peers to obtain the file they desire.
+
 Contact
 -------
 
