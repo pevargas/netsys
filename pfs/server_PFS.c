@@ -1,28 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// File: udp_server.c                   Fall 2013
+// File: server_PFS.c                   Fall 2013
 // Student: Patrick Vargas              patrick.vargas@colorado.edu
 // University of Colorado Boulder       CSCI 4273: Network Systems
 // Requirements:
-//   1. The server must take one command line argument: a port number for the 
-//      server to use. You should select port #'s > 5000.
-//   2. It should wait for a UDP connection.
-//   3. Depending on the commands received, the server responds to the client's 
-//      request in the following manner: 
-//     A. get [file_name]: 
-//          The server transmits the requested file to the client (use files of
-//          small size in order of 2 to 5 KB for transfer like any jpeg file).
-//     B. put [file_name]: 
-//          The server receives the transmitted file by the client and stores it
-//          locally (use files of small size in order of 2 to 5 KB for transfer
-//          like any jpeg file).
-//     C. ls: 
-//          The server should search all the files it has in its local directory
-//          and send a list of all these files to the client
-//     D. exit: 
-//          The server should exit gracefully. 
-//     E. For any other commands, the server should simply repeat the command
-//        back to the client with no modification, stating that the given
-//        command was not understood.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,10 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* You will have to modify the program below */
-
 #define MAXBUFSIZE 100
-
 #define ERROR( boolean ) if ( boolean ) {\
     fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
     exit ( EXIT_FAILURE );\

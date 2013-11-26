@@ -1,21 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// File:    udp_client.c                Fall 2013
+// File:    client_PFS.c                Fall 2013
 // Student: Patrick Vargas              patrick.vargas@colorado.edu
 // University of Colorado Boulder       CSCI 4273: Network Systems
 // Requirements
-//   1. The client must take two command line arguments: an IP address of the 
-//      machine on which the server application is running, and the port the 
-//      server application is using. [The IP address can be obtained using 
-//      hostname -i . Type man hostname at the shell prompt for more information
-//      on how to use the hostname command.]
-//   2. It should prompt the user to type any of the following commands 
-//     A. get [file_name] 
-//     B. put [file_name] 
-//     C. ls 
-//     D. exit 
-//     E. It must then send the command to the server.
-//   3. Then it must wait for the server's response. Once the server responds, 
-//      it should print appropriate messages, if any, on the standard output.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,13 +20,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-/* You will have to modify the program below */
-
 #define MAXBUFSIZE 100
 
-#define ERROR( boolean ) if ( boolean ) {\
-    fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
-    exit ( EXIT_FAILURE );\
+#define ERROR( boolean ) if ( boolean ) {								\
+    fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );	\
+    exit ( EXIT_FAILURE );												\
   }
 
 enum COMMAND { PUT, GET, LS, EXIT, INVALID };
