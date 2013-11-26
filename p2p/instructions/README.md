@@ -57,27 +57,27 @@ Clients
 
 * Register name with file location server
 * Register files with file location server
-* Request master file list from file location server ­ ‘ls’
+* Request master file list from file location server `ls`
 * Print master file list
-* Get file from another client ­ ‘get’
+* Get file from another client `get`
 * Provide file to another client
-* Exit current client ­ ‘exit’
+* Exit current client `exit`
 
 There will be n clients (must handle 3 or more) executing identical code.  Each client will startup and open a listening TCP for incoming ‘get’ requests.Then the client will register its name with the file location server.  No two clients can register with the same name.  Therefore if the server returns that this name already exists then the client just exits.  The client then sends its list of files  and their sizes to the the file location server.The file location server then returns the master file list and this is printed out to the client terminal.  If the master file list is updated at the file location server it will be pushed out to the client and the client should print the new file list to the terminal.  Once the client startup process is complete the user can:
 
-1. request a new list of files from the file location server using the ‘ls’ command and print this to the terminal  request.
-2. request a file directly from a peer client using the master list obtained from the file location server using the ‘get’ command.  After file is received close this connection.
-3. exit using the ‘exit’ command 
+1. request a new list of files from the file location server using the `ls` command and print this to the terminal  request.
+2. request a file directly from a peer client using the master list obtained from the file location server using the `get` command.  After file is received close this connection.
+3. exit using the `exit` command 
 
 Please execute clients in separate directories if testing on the same machine.  Transferred file must be identical to orginal file.  md5sum <filename> profides of hash of the file, which can be used to quickly compare two files.
 
 ### Usage
 
-	$ ./client_PFS <Client Name> <Server IP> <Server Port>
+	./client_PFS <Client Name> <Server IP> <Server Port>
 
 or
 
-	$ ./client_PFS <Client Name> <Server IP> <Server Port> <Private Key of this Client> <Certificate of this Client> <CA Cert>
+	./client_PFS <Client Name> <Server IP> <Server Port> <Private Key of this Client> <Certificate of this Client> <CA Cert>
 
 Master File List
 ----------------
@@ -177,11 +177,9 @@ You should submit all of the above to the Moodle by the deadline. T
 * clients are able to connect to the server via TCP
 * clients connect and disconnect from peers appropriately in order to retrieve files
 * clients can execute the commands above (‘ls’,’get’,’exit’)
-
-	*‘ls’ retrieves latest file list and prints to console
-	*‘get’ retrieves file directly from peer
-	*‘exit’ exits client
-
+	*`ls` retrieves latest file list and prints to console
+	*`get` retrieves file directly from peer
+	*`exit` exits client
 * server adds to and removes from master file list appropriately
 * server provides a master file list to all clients
 * grad students: certificate creation using the openSSL command line tool
