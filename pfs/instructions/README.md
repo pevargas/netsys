@@ -1,12 +1,12 @@
-Programming Assignment 4 Peer to Peer File Server (Encrypted)
+Programming Assignment 4 Peer to Peer File Server (Encrypted)
 =============================================================
 
-Due Monday, December 9th by 8:00am
+Due Monday, December 9th by 8:00am
 
 Groups
 ------
 
-Students may work in groups of two but groups are not necessary.Please send an email to the TA ( Daniel.Rosen@colorado.edu ) once you have established a group.  You are each responsible for complete understanding of your code and implementation of the assignment and you must each submit an assignment for grading.  Grading sessions will be conducted individually and you cannot share code with other teams.
+Students may work in groups of two but groups are not necessary.Please send an email to the TA ( Daniel.Rosen@colorado.edu ) once you have established a group.  You are each responsible for complete understanding of your code and implementation of the assignment and you must each submit an assignment for grading.  Grading sessions will be conducted individually and you cannot share code with other teams.
 
 Requirements
 ------------
@@ -194,7 +194,3 @@ Clarification
 -------------
 
 If more clarification becomes necessary, we will post further clarifications on this Web page.
-
-
-
-
