@@ -1,7 +1,12 @@
 User Datagram Protocol Assignment
 =================================
 
-The purpose of this program is to create a simple udp socket between a client and a server program.
+The requirements for this program is to
+
+* implement a file location server over TCP (server_PFS)
+* implement a peer to peer file distribution service over TCP (client_PFS)
+
+The program is a peer-to-peer file distribution service. Each client will register its name and its files with the locatioin server. The location server districutes the complete list of filenames and file locations to each client. Clients then got directly to each peer to obtain the file they desire.
 
 **Patrick E. Vargas**
 
@@ -15,8 +20,8 @@ The purpose of this program is to create a simple udp socket between a client an
 Included Files
 --------------
 
-1. client.c
-2. server.c
+1. client_PFS.c
+2. server_PFS.c
 3. makefile
 4. README.txt (this file)
 
@@ -30,21 +35,21 @@ Commands
 
 2. Run the server program, replacing <port> with a number between 1024 and 65535:
 
-	 	./server <port>
+	 	./server_PFS <Port Number>
 
 3. Run `hostname -i` to get the IP address of the server. Open up a new terminal. Use the found address and the port number you used in the following command in the new terminal:
 
-	 	./client <server_ip> <server_port>
+	 	./client_PFS <Client Name> <Server IP> <Server Port>
 
 ### While running the client ####
 
-1. `put <file_name>` to put file on server.
-
-2. `get <file_name>` to get file from server.
-
-3. `ls` to list all the files on the server.
-
-4. `exit` to destroy connection safely.
+* Register name with file location server
+* Register files with file location server
+* Request master file list from file location server `ls`
+* Print master file list
+* Get file from another client `get`
+* Provide file to another client
+* Exit current client `exit`
 
 ### Other Useful Commands ###
 
@@ -53,12 +58,10 @@ Commands
 Acknowledgments
 ---------------
 
-This assignment is based on the files given by Professor Han, CSCI 4273: Network Systems, "Programming Assignment 1 - UDP Socket Programming", University of Colorado Boulder. My implementation builds upon the tar file given to us.
+This assignment is based on the my first assignment, "Programming Assignment 1 - UDP Socket Programming", University of Colorado Boulder.
 
 Notes 
 -----
-
-With three minutes to spare, I was able to turn it in. I was able to get the basic program working, such as the `ls` and `exit` command. The `get` and `put` commands do work. With a text file, there is no problem. With the three minutes to spare, I discovered I was using the wrong functions to implment binary file transfer. If I had more time, I believe I could have completed the assignemnt. Perhaps I will in the future, if time permits.
 
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
