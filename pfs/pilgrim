@@ -8,11 +8,12 @@ cd scott
 ip=`hostname -i`
 
 # ./client_PFS <server_ip> <server_port>
+my_name=Scott
 server_ip=$ip
 server_port=5555
 
-echo ./client_PFS $server_ip $server_port
-./client_PFS $server_ip $server_port
+echo ./client_PFS $my_name $server_ip $server_port
+./client_PFS $my_name $server_ip $server_port
 
 rm client_PFS
 cd ..
