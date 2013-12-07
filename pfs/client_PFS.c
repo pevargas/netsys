@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <memory.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -20,14 +21,20 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAXBUFSIZE 100
-
+#define MAXBUFSIZE 256
+#define MAXLINE    256
+#define MAXFILES   512
 #define ERROR( boolean ) if ( boolean ) {								\
     fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );	\
     exit ( EXIT_FAILURE );												\
   }
 
 enum COMMAND { PUT, GET, LS, EXIT, INVALID };
+
+typedef struct {
+  char name[ MAXLINE ];      // The name of the file
+  int size;                // The size of the file (in B)
+} FileMeta;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,11 +44,17 @@ int createSocket( unsigned long ip, unsigned short port );
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
+// List all the files this client has. Returns the number of files
+int ls ( FileMeta catalog [] );
+
 // Recieve get data from the server
 void get ( char buffer [], int sock, struct sockaddr_in remote );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
+
+// Pretty print the catalog
+void printCatalog ( FileMeta catalog [], int n );
 
 // Function to handle put command
 void put ( char cmd [ ], int sock, struct sockaddr_in remote );
@@ -61,7 +74,9 @@ int main ( int argc, char * argv[ ] ) {
   //struct sockaddr_in remote;    // "Internet socket address structure"
   //struct sockaddr_in from_addr; // Socket for server
   //unsigned int addr_length = sizeof( struct sockaddr );
-  
+  FileMeta catalog[ MAXFILES ];
+  int entries = 0;
+  /*  
   // Make sure ip and port are given
   if ( argc < 3 ) {
 	printf("USAGE:  <server_ip> <server_port>\n");
@@ -78,6 +93,10 @@ int main ( int argc, char * argv[ ] ) {
   bzero( buffer, MAXBUFSIZE );
   nbytes = read( sock, buffer, MAXBUFSIZE );
   printf("%s\n", buffer);
+  */
+
+  entries = ls( catalog );
+  printCatalog( catalog, entries );
 
   /*
   //
@@ -123,7 +142,7 @@ int main ( int argc, char * argv[ ] ) {
 	}
   } while ( !isQuit( cmd ) );  
   */
-  close( sock );
+  //  close( sock );
   
   return EXIT_SUCCESS;
 } // main( )
@@ -162,6 +181,51 @@ int isQuit ( char cmd[ ] ) {
   if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
 } // isQuit( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// List all the files this client has. Returns the number of files
+int ls ( FileMeta catalog [] ) {
+  int n = 0;                 // The total number of files
+  int count;                 // The token number
+  FILE *fp;                  // The file pointer to the pipe
+  char *pch;                 // Pointer to tokens
+  char buffer[ MAXBUFSIZE ]; // Buffer to hold the line from the pipe
+  FileMeta file;             
+
+  // Open the pipe
+  fp = popen( "ls -o", "r" );
+  ERROR( fp == NULL );
+
+  // Read until the pipe is empty
+  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
+	count = 0;
+
+	// Tokenize the input
+	pch = strtok( buffer, " " );
+
+	// First line of ls is how many total file size
+	if ( strcmp( pch, "total" ) == 0 ) continue;
+
+	// Read each token
+	while ( pch != NULL ) {
+	  switch ( count ) {
+	  case 3: // Size of File
+		catalog[n].size = atoi( pch );
+		break;
+	  case 7: // File Name
+		pch[strlen( pch ) - 1] = '\0';
+		strcpy( catalog[n++].name, pch );
+		break;
+	  }
+	  pch = strtok( NULL, " " );
+	  count++;
+	}
+  }
+  ERROR( pclose( fp ) < 0 );
+
+  return n;
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,6 +284,51 @@ int parseCmd ( char cmd[ ] ) {
   else if ( strcmp( "ls", command ) == 0 )   return LS;
   else if ( strcmp( "exit", command ) == 0 ) return EXIT;
   else return INVALID;
+}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Pretty print the catalog
+void printCatalog ( FileMeta catalog [], int n ) {
+  int i, temp, maxName, maxSize;
+  char header[ MAXLINE ];
+  if ( n < 1 ) return;
+
+  maxName = strlen( catalog[0].name );
+  if ( catalog[0].size > 0 ) maxSize = (int) log10( (double) catalog[0].size ) + 1;
+  else                       maxSize = 1;
+
+  for ( i = 1; i < n; ++i ) {
+	if ( ( temp = strlen( catalog[i].name ) ) > maxName )
+	  maxName = temp;
+
+	if ( catalog[i].size > 0 )
+	  if ( ( temp = (int) log10( (double) catalog[i].size ) + 1 ) > maxSize )
+		maxSize = temp;
+  }
+
+  temp = sprintf( header, "| %*s | %*s |", maxName, "File Name", maxSize, "Size" );
+  printf( "+" );
+  for ( i = 1; i < temp-1; ++i ) {
+	if ( i == ( maxName + 3 ) ) printf( "+" );
+	else                        printf( "-" );
+  }
+  printf( "+\n%s\n+", header );
+  for ( i = 1; i < temp - 1; ++i ) {
+	if ( i == ( maxName + 3 ) ) printf( "+" );
+	else                        printf( "-" );
+  }
+  printf( "+\n" );
+
+  for ( i = 0; i < n; ++i )
+	printf( "| %*s | %*i |\n", maxName, catalog[i].name, maxSize, catalog[i].size );
+
+  printf( "+" );
+  for ( i = 1; i < temp-1; ++i ) {
+	if ( i == ( maxName + 3 ) ) printf( "+" );
+	else                        printf( "-" );
+  }
+  printf( "+\nTotal:\t%i\n", n );
 }
 ////////////////////////////////////////////////////////////////////////////////
 

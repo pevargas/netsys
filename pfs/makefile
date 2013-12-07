@@ -8,7 +8,7 @@
 
 #------------------------------------------------------------------------------#
 CC     = gcc
-FLAGS  = -Wall
+FLAGS  = -Wall -lm
 REM    = $(wildcard client_PFS server_PFS *~ vargasp_pfs.tar)
 
 all: client_PFS server_PFS
