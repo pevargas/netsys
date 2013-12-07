@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <memory.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -38,15 +39,22 @@ enum COMMAND { SUCCESS, FAILURE, PUT, GET, LS, EXIT, INVALID };
 typedef struct {
   int total;
   struct {
-	char name[MAXLINE];  // File owner
-	unsigned long  addr; // Address of owner
-	unsigned short port; // Port of owner 
-	int entires;         // Number of Files
-	struct {
-	  char name[ MAXLINE ];  // The name of the file
-	  int size;              // The size of the file (in B)
-	} catalog[ MAXFILES ];
-  } clients[ MAXCLIENTS ];
+	  char name[MAXLINE];      // File owner
+	  struct in_addr sin_addr; // Address of owner
+	  unsigned short sin_port; // Port of owner 
+	  int entires;             // Number of Files
+	  struct {
+	    char name[ MAXLINE ];  // The name of the file
+	    int size;              // The size of the file (in B)
+	  } list[ MAXFILES ];
+  } cxn[ MAXCLIENTS ];
+  struct {
+	int cname; // Maxlength of Conneciton name
+	int addr;  // Max address length
+	int port;  // Max port length
+	int fname; // Max file name length
+	int fsize; // Max Size length
+  } max; // Used in printing table, Don't judge my OCD
 } Repository;
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,7 +69,10 @@ int createSocket( unsigned short port );
 int isQuit ( char cmd[ ] );
 
 // Function to get the list from a certain connection
-void getList ( Repository *repo, int sock );
+void getList ( Repository *r, int sock );
+
+// Function to aid in printing process
+void maxPrint( Repository *r );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
@@ -69,8 +80,11 @@ int parseCmd ( char cmd[ ] );
 // Recieve put data from the client
 void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
 
+// Pretty print the catalog
+void printRepo ( Repository *r );
+
 // Register the client
-int registerClient( Repository *repo, int sock );
+int registerClient( Repository *r, int sock );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +109,7 @@ int main ( int argc, char * argv[ ] ) {
   }
 
   repo.total = 0;
+  maxPrint( &repo );
   
   //
   // Set up the socket
@@ -102,7 +117,7 @@ int main ( int argc, char * argv[ ] ) {
   int sock = createSocket( atoi( argv[1] ) );
   int nuSock = acceptConnection( sock );
   if ( registerClient( &repo, nuSock ) == SUCCESS ) {
-	sprintf( msg, "I got your message, %s!", repo.clients[repo.total-1].name );
+	sprintf( msg, "I got your message, %s!", repo.cxn[repo.total-1].name );
 	nbytes = send( nuSock, msg, MAXBUFSIZE, 0 );
 	ERROR( nbytes < 0 );
   }
@@ -213,7 +228,7 @@ int isQuit ( char cmd[ ] ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function to get the list from a certain connection
-void getList ( Repository *repo, int sock ) {
+void getList ( Repository *r, int sock ) {
   char buffer[ MAXBUFSIZE ]; // Buffer
   char msg[ MAXBUFSIZE ];    // Message to send
   int nbytes;                // Number of Bytes
@@ -229,6 +244,33 @@ void getList ( Repository *repo, int sock ) {
   printf( "Will add %i files\n",  n );
 
 } // getList( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to aid in printing process
+void maxPrint( Repository *r ) {
+  int i, temp;
+
+  if ( r->total < 1 ) {
+	r->max.cname = strlen( "File Owner" ); 
+	r->max.addr  = strlen( "Owner IP " );
+	r->max.port  = strlen( "Owner Port" );
+  }
+  else {
+	for ( i = 0; i < r->total; ++i ) {
+	  if ( ( temp = strlen( r->cxn[r->total].name ) ) > r->max.cname )
+		r->max.cname = temp;
+	  
+	  if ( ( temp = strlen( inet_ntoa( r->cxn[r->total].sin_addr ) ) ) > r->max.addr )
+		r->max.addr = temp;
+	  
+	  if ( r->cxn[r->total].sin_port > 0 ) {
+		if ( ( temp = (int) log10( (double) r->cxn[r->total].sin_port ) + 1) > r->max.port )
+		  r->max.port = temp;
+	  }
+	}
+  }
+} // maxPrint( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,8 +338,83 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Pretty print the catalog
+void printRepo ( Repository *r ) {
+  int i, temp;
+  char header[ MAXLINE ];
+  if ( r->total < 1 ) return;
+
+  temp = sprintf( header, "| %*s | %*s | %*s |", 
+				  r->max.cname, "File Owner", 
+				  r->max.addr,  "Owner IP",
+				  r->max.port,  "Owner Port" );
+  { ////////////////////////////////////////
+	printf( "+" );
+
+	for ( i = 1; i < r->max.cname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.addr + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.port + 3; ++i )
+	  printf( "-" );
+
+	printf( "+\n" );
+  } ////////////////////////////////////////
+  
+  printf( "%s\n", header );
+  
+  { ////////////////////////////////////////
+	printf( "+" );
+
+	for ( i = 1; i < r->max.cname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.addr + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.port + 3; ++i )
+	  printf( "-" );
+
+	printf( "+\n" );
+  } ////////////////////////////////////////
+  
+  for ( i = 0; i < r->total; ++i ) {
+	printf( "| %*s | %*s | %*i |\n",
+			r->max.cname, r->cxn[i].name, 
+			r->max.addr,  inet_ntoa( r->cxn[i].sin_addr ), 
+			r->max.port,  r->cxn[i].sin_port );
+  }
+  
+  { ////////////////////////////////////////
+	printf( "+" );
+
+	for ( i = 1; i < r->max.cname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.addr + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.port + 3; ++i )
+	  printf( "-" );
+
+	printf( "+\n" );
+  } ////////////////////////////////////////
+  
+  printf( "Total:\t%i\n", r->total );
+} // printRepo( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // Register the client
-int registerClient( Repository *repo, int sock ) {
+int registerClient( Repository *r, int sock ) {
   int i;                      // Iterator
   int nbytes;                 // Number of Bytes
   char buffer[ MAXBUFSIZE ];  // Buffer
@@ -310,8 +427,8 @@ int registerClient( Repository *repo, int sock ) {
   ERROR( nbytes < 0 );
   printf( "Who is connecting? %s\n", buffer );
 
-  for ( i = 0; i < repo->total; ++i ) {
-	if ( strcmp( buffer, repo->clients[i].name ) == 0 ) {
+  for ( i = 0; i < r->total; ++i ) {
+	if ( strcmp( buffer, r->cxn[i].name ) == 0 ) {
 	  printf( "'%s' already exists\n", buffer );
 	  nbytes = send( sock, "FAILURE", MAXBUFSIZE, 0 );
 	  ERROR( nbytes < 0 );	  
@@ -320,11 +437,13 @@ int registerClient( Repository *repo, int sock ) {
   } 
  
   ERROR( getsockname( sock, (struct sockaddr *) &remote, &remote_length ) < 0 );
-  strcpy( repo->clients[repo->total].name, buffer );
-  repo->clients[repo->total].addr   = remote.sin_addr.s_addr;
-  repo->clients[repo->total++].port = remote.sin_port;
+  strcpy( r->cxn[r->total].name, buffer );
+  r->cxn[r->total].sin_addr.s_addr = remote.sin_addr.s_addr;
+  r->cxn[r->total++].sin_port      = remote.sin_port;
 
-  getList( repo, sock );
+  maxPrint( r );
+  printRepo( r );
+  getList( r, sock );
 
   return SUCCESS;
 } // registerClient( )
