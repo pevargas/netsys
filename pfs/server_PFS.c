@@ -43,6 +43,12 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Accepts a TCP Conection along the socket - From ***REFERENCE***
+int acceptConnection( int sock );
+
+// Creates a socket for the port - From ***REFERENCE***
+int createSocket( unsigned short port );
+
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
@@ -61,14 +67,14 @@ int main ( int argc, char * argv[ ] ) {
   //
   // Variables
   //
-  int sock, ibind;                   // This will be our socket and bind
+  //  int sock, ibind;                   // This will be our socket and bind
   int nbytes;                        // number of bytes we receive in our message
-  struct sockaddr_in client, remote; // "Internet socket address structure"
-  unsigned int remote_length;        // length of the sockaddr_in structure
+  //struct sockaddr_in client, remote; // "Internet socket address structure"
+  //unsigned int remote_length;        // length of the sockaddr_in structure
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
-  char msg[ MAXBUFSIZE ];            // Message to return
-  char *newline = NULL;              // Get newline
-  FILE *fp;                          // Pointer to file
+  //char msg[ MAXBUFSIZE ];            // Message to return
+  //char *newline = NULL;              // Get newline
+  //FILE *fp;                          // Pointer to file
 
   //
   // Make sure port is given on command line
@@ -81,34 +87,18 @@ int main ( int argc, char * argv[ ] ) {
   //
   // Set up the socket
   //
-  /********************
-    This code populates the sockaddr_in struct with
-      the information about our socket
-  *********************/
-  // zero the struct
-  bzero( &client, sizeof( client ) );            
-  // address family
-  client.sin_family = AF_INET;                   
-  // htons() sets the port # to network byte order
-  client.sin_port = htons( atoi( argv[ 1 ] ) );  
-  // supplies the IP address of the local machine
-  client.sin_addr.s_addr = INADDR_ANY;           
-  
-  // Causes the system to create a generic socket of 
-  //   type UDP (datagram)
-  sock = socket( AF_INET, SOCK_DGRAM, 0 );
-  ERROR( sock < 0 );
+  int sock = createSocket( atoi( argv[1] ) );
+  int nuSock = acceptConnection( sock );
 
-  /********************
-    Once we've created a socket, we must bind that socket to the 
-	local address and port we've supplied in the sockaddr_in struct
-  *********************/
-  ibind = bind( sock, ( struct sockaddr * ) &client, sizeof( client ) );
-  ERROR( ibind < 0 );
-  remote_length = sizeof( remote );
+  bzero( buffer, sizeof( buffer ) );
+  nbytes = read( nuSock, buffer, MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+  printf( "Client says: %s\n", buffer );
   
-  printf( "Waiting for client\n" );
-  
+  nbytes = write( nuSock, "I got your message, yo!", MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+
+  /*  
   //
   // Enter command loop
   //
@@ -144,11 +134,60 @@ int main ( int argc, char * argv[ ] ) {
 	ERROR( nbytes < 0 );
 	// printf( "Server sent %i bytes\n", nbytes);	
   } while ( !isQuit( buffer ) );  
-  
+  */  
+  close( nuSock );
   close( sock );
   
   return EXIT_SUCCESS;
-}
+} // main( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Accepts a TCP Conection along the socket - From ***REFERENCE***
+int acceptConnection( int sock ) {
+  int nuSock;                 // The new socket to be used
+  struct sockaddr_in remote;  // The address of the remote connection
+  unsigned int remote_length; // The length of the address
+
+  // Set the size
+  remote_length = sizeof( remote );
+  // Wait for the client to connect
+  nuSock = accept( sock, (struct sockaddr *) &remote, &remote_length );
+  ERROR( nuSock < 0 );
+
+  // We are connected to the client!
+  printf( "Handling client %s\n", inet_ntoa( remote.sin_addr ) );
+  
+  return nuSock;
+} // acceptConnection( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Creates a socket for the port - From ***REFERENCE***
+int createSocket( unsigned short port ) {
+  int sock;                 // The socket to create
+  struct sockaddr_in local; // Local address
+
+  // Create socket for incoming connections
+  sock = socket( PF_INET, SOCK_STREAM, 0 );
+  ERROR( sock < 0 );
+
+  // Construct local address structure
+  bzero( &local, sizeof( local ) );            // Zero out structure
+  local.sin_family      = AF_INET;             // Internet address family
+  local.sin_addr.s_addr = htonl( INADDR_ANY ); // Any incoming interface
+  local.sin_port        = htons( port );       // Local port
+
+  // Bind to the local address
+  ERROR( bind( sock, (struct sockaddr *) &local, sizeof( local ) ) < 0 );
+
+  // Mark the socket so it will listen for incoming connections
+  ERROR( listen( sock, MAXPENDING ) < 0 );
+
+  printf( "Waiting for client\n" );
+
+  return sock; 
+} // createSocket( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +199,7 @@ int isQuit ( char cmd[ ] ) {
 
   if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
-}
+} // isQuit( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

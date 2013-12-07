@@ -31,6 +31,9 @@ enum COMMAND { PUT, GET, LS, EXIT, INVALID };
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Creates a socket for the ip address and port - From ***REFERENCE***
+int createSocket( unsigned long ip, unsigned short port );
+
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
@@ -49,15 +52,15 @@ int main ( int argc, char * argv[ ] ) {
   //
   // Variables
   // 
-  int nbytes;                   // Number of bytes send by sendto()
+  int nbytes;                   // Number of bytes
   int sock;                     // This will be our socket
   char buffer[ MAXBUFSIZE ];    // Recieve data from Server
-  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
-  char temp[ MAXBUFSIZE ];      // Temporary string holder
-  char *newline = NULL;         // Get newline
-  struct sockaddr_in remote;    // "Internet socket address structure"
-  struct sockaddr_in from_addr; // Socket for server
-  unsigned int addr_length = sizeof( struct sockaddr );
+  //  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
+  //char temp[ MAXBUFSIZE ];      // Temporary string holder
+  //char *newline = NULL;         // Get newline
+  //struct sockaddr_in remote;    // "Internet socket address structure"
+  //struct sockaddr_in from_addr; // Socket for server
+  //unsigned int addr_length = sizeof( struct sockaddr );
   
   // Make sure ip and port are given
   if ( argc < 3 ) {
@@ -68,21 +71,15 @@ int main ( int argc, char * argv[ ] ) {
   // 
   // Set up the socket 
   //
-  /*******************
-    Here we populate a sockaddr_in struct with information 
-      regarding where we'd like to send our packet i.e the Server.
-  ********************/
-  bzero( &remote, sizeof( remote ) );              // zero the struct
-  remote.sin_family = AF_INET;                     // address family
-  remote.sin_port = htons( atoi( argv[ 2 ] ) );    // sets port to network byte order
-  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address  
-  ERROR( remote.sin_addr.s_addr < 0 );
-  
-  // Causes the system to create a generic socket of 
-  //   type UDP (datagram)
-  sock = socket( AF_INET, SOCK_DGRAM, 0 );
-  ERROR( sock < 0 );  
+  sock = createSocket( inet_addr( argv[1] ), atoi( argv[2] ) );
+  nbytes = write( sock, "Do you hear me, yo?", MAXBUFSIZE );
+  ERROR( nbytes < 0 );
 
+  bzero( buffer, MAXBUFSIZE );
+  nbytes = read( sock, buffer, MAXBUFSIZE );
+  printf("%s\n", buffer);
+
+  /*
   //
   // Enter command loop
   //
@@ -98,12 +95,11 @@ int main ( int argc, char * argv[ ] ) {
 	  newline = strchr( cmd, '\n'); // Find the newline
 	  if ( newline != NULL ) *newline = '\0'; // Overwrite
 	  
-	  /*******************
-	    sendto() sends immediately.  
-	      it will report an error if the message fails to leave the 
-          computer.Hhowever, with UDP, there is no error if the message 
-          is lost in the network once it leaves the computer.
-	  ********************/  
+	  //
+	  // sendto() sends immediately.  
+	  //    it will report an error if the message fails to leave the 
+      //    computer.Hhowever, with UDP, there is no error if the message 
+      //    is lost in the network once it leaves the computer.
 	  nbytes = sendto( sock, cmd, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
 	  ERROR ( nbytes < 0 );
 	  
@@ -126,11 +122,34 @@ int main ( int argc, char * argv[ ] ) {
 
 	}
   } while ( !isQuit( cmd ) );  
-  
+  */
   close( sock );
   
   return EXIT_SUCCESS;
-}
+} // main( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Creates a socket for the port - From ***REFERENCE***
+int createSocket( unsigned long ip, unsigned short port ) {
+  int sock;                 // The socket to create
+  struct sockaddr_in remote; // Local address
+
+  // Create socket for incoming connections
+  sock = socket( PF_INET, SOCK_STREAM, 0 );
+  ERROR( sock < 0 );
+
+  // Construct local address structure
+  bzero( &remote, sizeof( remote ) );     // Zero out structure
+  remote.sin_family      = PF_INET;       // Internet address family
+  remote.sin_addr.s_addr = ip;            // The address for the server
+  remote.sin_port        = htons( port ); // Local port
+
+  ERROR( connect( sock, (struct sockaddr *) &remote, sizeof( remote ) ) < 0 );
+  printf( "Connected to remote\n" );
+
+  return sock; 
+} // createSocket( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +161,7 @@ int isQuit ( char cmd[ ] ) {
 
   if ( strcmp( "exit", cmd ) == 0 ) return 1;
   return 0;
-}
+} // isQuit( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +200,7 @@ void get ( char buffer [], int sock, struct sockaddr_in remote ) {
 	  ERROR( fclose( fp ) );
 	}
   }
-} // get()
+} // get( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +264,6 @@ void put ( char cmd [ ], int sock, struct sockaddr_in remote ) {
 	  ERROR ( fclose( fp ) );
 	}
   } // filename != ""
-} // void put ()
+} // put( )
 ////////////////////////////////////////////////////////////////////////////////
 
