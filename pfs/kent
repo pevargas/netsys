@@ -1,0 +1,18 @@
+#!/bin/bash
+
+clear
+cp client_PFS clark
+cd clark
+
+# Get IP address
+ip=`hostname -i`
+
+# ./client_PFS <server_ip> <server_port>
+server_ip=$ip
+server_port=5555
+
+echo ./client_PFS $server_ip $server_port
+./client_PFS $server_ip $server_port
+
+rm client_PFS
+cd ..

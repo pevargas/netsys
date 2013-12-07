@@ -1,0 +1,9 @@
+#!/bin/bash
+
+clear
+
+# ./server_PFS <server_port>
+server_port=5555
+
+echo ./server_PFS $server_port
+./server_PFS $server_port

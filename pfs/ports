@@ -1,0 +1,12 @@
+#!/bin/bash
+# Script to list the active ports and such
+
+#ports=( {9701..9718} )
+
+#for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+#do
+#		echo "<=== Port ${ports[i]} ===>"
+#		sudo netstat -np | grep ${ports[i]};
+#done
+
+sudo netstat -np | grep 5555;
