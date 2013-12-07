@@ -72,15 +72,10 @@ int main ( int argc, char * argv[ ] ) {
     Here we populate a sockaddr_in struct with information 
       regarding where we'd like to send our packet i.e the Server.
   ********************/
-  // zero the struct
-  bzero( &remote, sizeof( remote ) );             
-  // address family
-  remote.sin_family = AF_INET;                     
-  // sets port to network byte order
-  remote.sin_port = htons( atoi( argv[ 2 ] ) );  
-  // sets remote IP address  
-  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] );
-  
+  bzero( &remote, sizeof( remote ) );              // zero the struct
+  remote.sin_family = AF_INET;                     // address family
+  remote.sin_port = htons( atoi( argv[ 2 ] ) );    // sets port to network byte order
+  remote.sin_addr.s_addr = inet_addr( argv[ 1 ] ); // sets remote IP address  
   ERROR( remote.sin_addr.s_addr < 0 );
   
   // Causes the system to create a generic socket of 

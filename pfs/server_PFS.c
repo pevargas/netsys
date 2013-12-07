@@ -23,12 +23,23 @@
 #include <unistd.h>
 
 #define MAXBUFSIZE 100
+#define MAXLINE    256
+#define MAXPENDING 5
+
 #define ERROR( boolean ) if ( boolean ) {\
     fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
     exit ( EXIT_FAILURE );\
   }
 
 enum COMMAND { PUT, GET, LS, EXIT, INVALID };
+
+typedef struct {
+  char name[MAXLINE];      // The name of the file
+  int size;                // The size of the file (in KB)
+  char owner[MAXLINE];     // File owner
+  struct in_addr sin_addr; // Address of owner
+  unsigned short sin_port; // Port of owner
+} FileMeta;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +206,7 @@ void get ( char msg [ ], char cmd [ ], int sock, struct sockaddr_in remote ) {
 	  ERROR ( fclose( fp ) );
 	}
   }  else sprintf( msg, "USAGE: get <file_name>");
-} // void get ()
+} // get( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,12 +221,12 @@ int parseCmd ( char cmd[ ] ) {
   // Get the command
   sscanf( cmd, "%s", command );
 
-  if      ( strcmp( "put", command ) == 0 )  return PUT;
-  else if ( strcmp( "get", command ) == 0 )  return GET;
-  else if ( strcmp( "ls", command ) == 0 )   return LS;
+  if      ( strcmp( "put",  command ) == 0 ) return PUT;
+  else if ( strcmp( "get",  command ) == 0 ) return GET;
+  else if ( strcmp( "ls",   command ) == 0 ) return LS;
   else if ( strcmp( "exit", command ) == 0 ) return EXIT;
   else return INVALID;
-}
+} // parseCmd( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
