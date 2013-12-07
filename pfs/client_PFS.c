@@ -29,12 +29,16 @@
     exit ( EXIT_FAILURE );												\
   }
 
-enum COMMAND { PUT, GET, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, PUT, GET, LS, EXIT, INVALID };
 
 typedef struct {
-  char name[ MAXLINE ];      // The name of the file
-  int size;                // The size of the file (in B)
-} FileMeta;
+  char name[ MAXBUFSIZE ]; // Name of client
+  int total;               // Total number of files
+  struct {
+	char name[ MAXLINE ];  // The name of the file
+	int size;              // The size of the file (in B)
+  } list[ MAXFILES ];
+} Folder;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,20 +48,23 @@ int createSocket( unsigned long ip, unsigned short port );
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
-// List all the files this client has. Returns the number of files
-int ls ( FileMeta catalog [] );
-
-// Recieve get data from the server
-void get ( char buffer [], int sock, struct sockaddr_in remote );
+// List all the files this client has.
+void ls ( Folder *dir ); 
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
 
 // Pretty print the catalog
-void printCatalog ( FileMeta catalog [], int n );
+void printCatalog ( Folder *dir );
 
 // Function to handle put command
 void put ( char cmd [ ], int sock, struct sockaddr_in remote );
+
+// Send my list of files
+void sendList( Folder *dir, int sock );
+
+// Register myself with the server
+int registerClient( Folder *dir, int sock );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,29 +81,29 @@ int main ( int argc, char * argv[ ] ) {
   //struct sockaddr_in remote;    // "Internet socket address structure"
   //struct sockaddr_in from_addr; // Socket for server
   //unsigned int addr_length = sizeof( struct sockaddr );
-  FileMeta catalog[ MAXFILES ];
-  int entries = 0;
-  /*  
-  // Make sure ip and port are given
-  if ( argc < 3 ) {
-	printf("USAGE:  <server_ip> <server_port>\n");
+  Folder dir;
+
+  // Make sure name, ip and port are given
+  if ( argc < 4 ) {
+	printf("USAGE:  <client_name> <server_ip> <server_port>\n");
 	exit ( EXIT_FAILURE );
   }
+
+  strcpy( dir.name, argv[1] );
   
   // 
   // Set up the socket 
   //
-  sock = createSocket( inet_addr( argv[1] ), atoi( argv[2] ) );
-  nbytes = write( sock, "Do you hear me, yo?", MAXBUFSIZE );
-  ERROR( nbytes < 0 );
+  sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
+  if ( registerClient( &dir, sock ) == FAILURE ) {
+	close( sock );
+	return EXIT_SUCCESS;
+  }
 
   bzero( buffer, MAXBUFSIZE );
-  nbytes = read( sock, buffer, MAXBUFSIZE );
-  printf("%s\n", buffer);
-  */
-
-  entries = ls( catalog );
-  printCatalog( catalog, entries );
+  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
+  ERROR( nbytes < 0 );
+  printf( "%s\n", buffer );
 
   /*
   //
@@ -142,7 +149,7 @@ int main ( int argc, char * argv[ ] ) {
 	}
   } while ( !isQuit( cmd ) );  
   */
-  //  close( sock );
+  close( sock );
   
   return EXIT_SUCCESS;
 } // main( )
@@ -185,13 +192,13 @@ int isQuit ( char cmd[ ] ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // List all the files this client has. Returns the number of files
-int ls ( FileMeta catalog [] ) {
-  int n = 0;                 // The total number of files
+void ls ( Folder *dir ) {
   int count;                 // The token number
   FILE *fp;                  // The file pointer to the pipe
   char *pch;                 // Pointer to tokens
   char buffer[ MAXBUFSIZE ]; // Buffer to hold the line from the pipe
-  FileMeta file;             
+   
+  dir->total = 0;
 
   // Open the pipe
   fp = popen( "ls -o", "r" );
@@ -211,11 +218,11 @@ int ls ( FileMeta catalog [] ) {
 	while ( pch != NULL ) {
 	  switch ( count ) {
 	  case 3: // Size of File
-		catalog[n].size = atoi( pch );
+		dir->list[dir->total].size = atoi( pch );
 		break;
 	  case 7: // File Name
 		pch[strlen( pch ) - 1] = '\0';
-		strcpy( catalog[n++].name, pch );
+		strcpy( dir->list[dir->total++].name, pch );
 		break;
 	  }
 	  pch = strtok( NULL, " " );
@@ -223,48 +230,7 @@ int ls ( FileMeta catalog [] ) {
 	}
   }
   ERROR( pclose( fp ) < 0 );
-
-  return n;
 }
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// Recieve get data from the server
-void get ( char buffer [], int sock, struct sockaddr_in remote ) { 
-  int nbytes;                        // number of bytes we receive in our message
-  int eof;                           // Flag for end of file stream
-  unsigned int remote_length;        // length of the sockaddr_in structure
-  char filename[ MAXBUFSIZE ];       // Name of file
-  FILE *fp;                          // Pointer to file
-
-  remote_length = sizeof( remote );
-
-  // Check for filename
-  memcpy( filename, buffer + 4, strlen( buffer ) + 1 );
-  if ( strcmp( filename, "" ) != 0 ) {
-	strcat( filename, "_client" );
-	
-	// Wait for incoming message
-	bzero( buffer, sizeof( buffer ) );
-	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-	ERROR( nbytes < 0 );
-	
-	if ( strcmp( buffer, "File does not exist" ) != 0 ) {
-	  fp = fopen( filename, "w" );
-	  ERROR( fp == NULL );
-	  eof = 0;
-	  while ( !eof ) {
-		if ( strcmp( buffer, "Finished getting file" ) == 0 ) eof = 1;
-		else {
-		  fputs( buffer, fp ); 
-		  nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
-		  ERROR( nbytes < 0 );
-		}
-	  }
-	  ERROR( fclose( fp ) );
-	}
-  }
-} // get( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,31 +245,33 @@ int parseCmd ( char cmd[ ] ) {
   // Get the command
   sscanf( cmd, "%s", command );
 
-  if      ( strcmp( "put", command ) == 0 )  return PUT;
-  else if ( strcmp( "get", command ) == 0 )  return GET;
-  else if ( strcmp( "ls", command ) == 0 )   return LS;
-  else if ( strcmp( "exit", command ) == 0 ) return EXIT;
+  if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
+  else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
+  else if ( strcmp( "put",      command ) == 0 ) return PUT;
+  else if ( strcmp( "get",      command ) == 0 ) return GET;
+  else if ( strcmp( "ls",       command ) == 0 ) return LS;
+  else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pretty print the catalog
-void printCatalog ( FileMeta catalog [], int n ) {
+void printCatalog ( Folder *dir ) {
   int i, temp, maxName, maxSize;
   char header[ MAXLINE ];
-  if ( n < 1 ) return;
+  if ( dir->total < 1 ) return;
 
-  maxName = strlen( catalog[0].name );
-  if ( catalog[0].size > 0 ) maxSize = (int) log10( (double) catalog[0].size ) + 1;
-  else                       maxSize = 1;
+  maxName = strlen( dir->list[0].name );
+  if ( dir->list[0].size > 0 ) maxSize = (int) log10( (double) dir->list[0].size ) + 1;
+  else                         maxSize = 1;
 
-  for ( i = 1; i < n; ++i ) {
-	if ( ( temp = strlen( catalog[i].name ) ) > maxName )
+  for ( i = 1; i < dir->total; ++i ) {
+	if ( ( temp = strlen( dir->list[i].name ) ) > maxName )
 	  maxName = temp;
 
-	if ( catalog[i].size > 0 )
-	  if ( ( temp = (int) log10( (double) catalog[i].size ) + 1 ) > maxSize )
+	if ( dir->list[i].size > 0 )
+	  if ( ( temp = (int) log10( (double) dir->list[i].size ) + 1 ) > maxSize )
 		maxSize = temp;
   }
 
@@ -320,15 +288,15 @@ void printCatalog ( FileMeta catalog [], int n ) {
   }
   printf( "+\n" );
 
-  for ( i = 0; i < n; ++i )
-	printf( "| %*s | %*i |\n", maxName, catalog[i].name, maxSize, catalog[i].size );
+  for ( i = 0; i < dir->total; ++i )
+	printf( "| %*s | %*i |\n", maxName, dir->list[i].name, maxSize, dir->list[i].size );
 
   printf( "+" );
   for ( i = 1; i < temp-1; ++i ) {
 	if ( i == ( maxName + 3 ) ) printf( "+" );
 	else                        printf( "-" );
   }
-  printf( "+\nTotal:\t%i\n", n );
+  printf( "+\nTotal:\t%i\n", dir->total );
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -376,3 +344,45 @@ void put ( char cmd [ ], int sock, struct sockaddr_in remote ) {
 } // put( )
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Send my list of files
+void sendList( Folder *dir, int sock ) {
+  int nbytes;             // Number of bytes
+  char msg[ MAXBUFSIZE ]; // Message to send
+
+  ls( dir );
+  printCatalog( dir );
+  
+  sprintf( msg, "%i", dir->total );
+  printf( "Will forward %s files\n", msg );
+  nbytes = send( sock, msg, MAXBUFSIZE, 0 );
+  ERROR( nbytes < 0 );
+  
+} // sendList( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Register myself with the server
+int registerClient( Folder *dir, int sock ) {
+  int cmd;                   // The command
+  int nbytes;                // Number of bytes
+  char buffer[ MAXBUFSIZE ]; // Buffer
+
+  nbytes = send( sock, dir->name, MAXBUFSIZE, 0 );
+  ERROR( nbytes < 0 );
+
+  bzero( buffer, MAXBUFSIZE );
+  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
+  printf( "%s\n", buffer );
+
+  if ( ( cmd = parseCmd( buffer ) ) == FAILURE ) {
+	printf( "There is already a user with the name '%s' on the server.\n", 
+			dir->name );
+  }
+  else if ( cmd == GET ) {
+	sendList( dir, sock );
+  }
+
+  return cmd;
+} // registerClient( )
+////////////////////////////////////////////////////////////////////////////////

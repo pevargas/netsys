@@ -25,21 +25,29 @@
 #define MAXBUFSIZE 100
 #define MAXLINE    256
 #define MAXPENDING 5
+#define MAXFILES   512
+#define MAXCLIENTS 5
 
 #define ERROR( boolean ) if ( boolean ) {\
     fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );\
     exit ( EXIT_FAILURE );\
   }
 
-enum COMMAND { PUT, GET, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, PUT, GET, LS, EXIT, INVALID };
 
 typedef struct {
-  char name[MAXLINE];      // The name of the file
-  int size;                // The size of the file (in KB)
-  char owner[MAXLINE];     // File owner
-  unsigned long  sin_addr; // Address of owner
-  unsigned short sin_port; // Port of owner
-} FileMeta;
+  int total;
+  struct {
+	char name[MAXLINE];  // File owner
+	unsigned long  addr; // Address of owner
+	unsigned short port; // Port of owner 
+	int entires;         // Number of Files
+	struct {
+	  char name[ MAXLINE ];  // The name of the file
+	  int size;              // The size of the file (in B)
+	} catalog[ MAXFILES ];
+  } clients[ MAXCLIENTS ];
+} Repository;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,14 +60,17 @@ int createSocket( unsigned short port );
 // Function to see if it's time to terminate program.
 int isQuit ( char cmd[ ] );
 
-// Function to handle get command
-void get ( char msg [], char cmd [ ], int sock, struct sockaddr_in remote );
+// Function to get the list from a certain connection
+void getList ( Repository *repo, int sock );
 
 // Take the input and see what needs to be done.
 int parseCmd ( char cmd[ ] );
 
 // Recieve put data from the client
 void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote );
+
+// Register the client
+int registerClient( Repository *repo, int sock );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,9 +83,8 @@ int main ( int argc, char * argv[ ] ) {
   //struct sockaddr_in client, remote; // "Internet socket address structure"
   //unsigned int remote_length;        // length of the sockaddr_in structure
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
-  //char msg[ MAXBUFSIZE ];            // Message to return
-  //char *newline = NULL;              // Get newline
-  //FILE *fp;                          // Pointer to file
+  char msg[ MAXBUFSIZE ];            // Message to return
+  Repository repo; // The registration list
 
   //
   // Make sure port is given on command line
@@ -83,20 +93,19 @@ int main ( int argc, char * argv[ ] ) {
 	printf( "USAGE:  <port>\n" );
 	exit( EXIT_FAILURE );
   }
+
+  repo.total = 0;
   
   //
   // Set up the socket
   //
   int sock = createSocket( atoi( argv[1] ) );
   int nuSock = acceptConnection( sock );
-
-  bzero( buffer, sizeof( buffer ) );
-  nbytes = read( nuSock, buffer, MAXBUFSIZE );
-  ERROR( nbytes < 0 );
-  printf( "Client says: %s\n", buffer );
-  
-  nbytes = write( nuSock, "I got your message, yo!", MAXBUFSIZE );
-  ERROR( nbytes < 0 );
+  if ( registerClient( &repo, nuSock ) == SUCCESS ) {
+	sprintf( msg, "I got your message, %s!", repo.clients[repo.total-1].name );
+	nbytes = send( nuSock, msg, MAXBUFSIZE, 0 );
+	ERROR( nbytes < 0 );
+  }
 
   /*  
   //
@@ -203,49 +212,23 @@ int isQuit ( char cmd[ ] ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Function to handle get command
-void get ( char msg [ ], char cmd [ ], int sock, struct sockaddr_in remote ) { 
-  int nbytes;                   // Number of bytes send by sendto()
-  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
-  char filename[ MAXBUFSIZE ];  // Name of file
-  FILE *fp;                     // Pointer to file
+// Function to get the list from a certain connection
+void getList ( Repository *repo, int sock ) {
+  char buffer[ MAXBUFSIZE ]; // Buffer
+  char msg[ MAXBUFSIZE ];    // Message to send
+  int nbytes;                // Number of Bytes
+  int n;                     // Number of files to add
   
-  // Check for filename
-  memcpy( filename, cmd + 4, strlen( cmd ) + 1 );
-  // Make sure filename isn't null
-  if ( strcmp( filename, "" ) != 0 ) {
-	fp = fopen( filename, "r" );
-	// See if file exists
-	if ( fp == NULL ) {
-	  // If file is MIA, print message to buffer
-	  if ( errno == ENOENT ) {
-		sprintf( buffer, "File does not exist" );
-		strcpy( msg, buffer );
-		// Send buffer
-		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-		ERROR ( nbytes < 0 );
-	  }
-	  else ERROR ( fp == NULL );
-	} // fp == NULL
-	else {
-	  *buffer = '\0';
-	  // Else read contents of file into buffer
-	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
-		printf( "%s", buffer );
-		// Send one line from file
-		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-		ERROR ( nbytes < 0 );
-	  }
-	  // Tell server we're done
-	  sprintf( buffer, "Finished getting file" );
-	  strcpy( msg, buffer );
-	  // Send buffer
-	  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-	  ERROR ( nbytes < 0 );
-	  ERROR ( fclose( fp ) );
-	}
-  }  else sprintf( msg, "USAGE: get <file_name>");
-} // get( )
+  nbytes = send( sock, "GET", MAXBUFSIZE, 0 );
+  ERROR( nbytes < 0 );
+  
+  bzero( buffer, sizeof( buffer ) );
+  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
+  ERROR( nbytes < 0 );
+  n = atoi( buffer );
+  printf( "Will add %i files\n",  n );
+
+} // getList( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,10 +243,12 @@ int parseCmd ( char cmd[ ] ) {
   // Get the command
   sscanf( cmd, "%s", command );
 
-  if      ( strcmp( "put",  command ) == 0 ) return PUT;
-  else if ( strcmp( "get",  command ) == 0 ) return GET;
-  else if ( strcmp( "ls",   command ) == 0 ) return LS;
-  else if ( strcmp( "exit", command ) == 0 ) return EXIT;
+  if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
+  else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
+  else if ( strcmp( "put",      command ) == 0 ) return PUT;
+  else if ( strcmp( "get",      command ) == 0 ) return GET;
+  else if ( strcmp( "ls",       command ) == 0 ) return LS;
+  else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
 } // parseCmd( )
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,4 +293,39 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
   }
   else sprintf( msg, "USAGE: put <file_name>");
 } // put()
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Register the client
+int registerClient( Repository *repo, int sock ) {
+  int i;                      // Iterator
+  int nbytes;                 // Number of Bytes
+  char buffer[ MAXBUFSIZE ];  // Buffer
+  struct sockaddr_in remote;  // Local address
+  unsigned int remote_length; // Length of address
+  remote_length = sizeof( remote );
+
+  bzero( buffer, sizeof( buffer ) );
+  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
+  ERROR( nbytes < 0 );
+  printf( "Who is connecting? %s\n", buffer );
+
+  for ( i = 0; i < repo->total; ++i ) {
+	if ( strcmp( buffer, repo->clients[i].name ) == 0 ) {
+	  printf( "'%s' already exists\n", buffer );
+	  nbytes = send( sock, "FAILURE", MAXBUFSIZE, 0 );
+	  ERROR( nbytes < 0 );	  
+	  return FAILURE;
+	}
+  } 
+ 
+  ERROR( getsockname( sock, (struct sockaddr *) &remote, &remote_length ) < 0 );
+  strcpy( repo->clients[repo->total].name, buffer );
+  repo->clients[repo->total].addr   = remote.sin_addr.s_addr;
+  repo->clients[repo->total++].port = remote.sin_port;
+
+  getList( repo, sock );
+
+  return SUCCESS;
+} // registerClient( )
 ////////////////////////////////////////////////////////////////////////////////
