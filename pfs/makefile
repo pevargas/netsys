@@ -30,6 +30,7 @@ deploy:
 
 clean:
 	@rm $(REM);
+	@clear;
 
 # Obligatory unix joke
 love:
