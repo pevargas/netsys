@@ -37,7 +37,7 @@ typedef struct {
   char name[MAXLINE];      // The name of the file
   int size;                // The size of the file (in KB)
   char owner[MAXLINE];     // File owner
-  struct in_addr sin_addr; // Address of owner
+  unsigned long  sin_addr; // Address of owner
   unsigned short sin_port; // Port of owner
 } FileMeta;
 ////////////////////////////////////////////////////////////////////////////////
