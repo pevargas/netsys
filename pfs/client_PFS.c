@@ -30,11 +30,14 @@ void connectPlease( Folder *dir, int sock );
 // Creates a socket for the ip address and port - From ***REFERENCE***
 int createSocket( unsigned long ip, unsigned short port );
 
+// Gets the master list from the server
+void getMaster( Repository *r, int sock );
+
 // List all the files this client has.
-void ls ( Folder *dir ); 
+void ls( Folder *dir ); 
 
 // Pretty print the catalog
-void printCatalog ( Folder *dir );
+void printCatalog( Folder *dir );
 
 // Send my list of files
 void sendList( Folder *dir, int sock );
@@ -45,19 +48,13 @@ int registerClient( Folder *dir, int sock );
 
 ////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
-  //
-  // Variables
-  // 
-  int nbytes;                   // Number of bytes
-  int sock;                     // This will be our socket
-  //  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
-  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
-  //char temp[ MAXBUFSIZE ];      // Temporary string holder
-  char *newline = NULL;         // Get newline
-  //  struct sockaddr_in remote;    // "Internet socket address structure"
-  //struct sockaddr_in from_addr; // Socket for server
-  //unsigned int addr_length = sizeof( struct sockaddr );
-  Folder dir;
+  int nbytes;                // Number of bytes
+  int sock;                  // This will be our socket
+  char buffer[ MAXBUFSIZE ]; // A buffer to buff things
+  char cmd[ MAXBUFSIZE ];    // Command to be sent to Server
+  char *newline = NULL;      // Get newline
+  Folder dir;                // Local list of folder Files
+  Repository repo;           // Master file list
 
   // Make sure name, ip and port are given
   if ( argc < 4 ) {
@@ -72,7 +69,8 @@ int main ( int argc, char * argv[ ] ) {
   
   sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
   connectPlease( &dir, sock );
- 
+  //  getMaster( &repo, sock );
+
   //
   // Enter command loop
   //
@@ -90,14 +88,21 @@ int main ( int argc, char * argv[ ] ) {
 	  switch ( parseCmd ( cmd ) ) 
 		{
 		case LS:
-		  printCatalog ( &dir );			
+		  printCatalog ( &dir );
+		  break;
+		case GET:
+		  getMaster( &repo, sock );
 		  break;
 		case EXIT: 
 		  nbytes = write( sock, "EXIT", MAXBUFSIZE );
 		  ERROR( nbytes < 0 );
 		  break;
 		default:
-		  printf( "$ Invalid Command\n");
+		  nbytes = write( sock, cmd, MAXBUFSIZE );
+		  ERROR( nbytes < 0 );
+		  bzero( buffer, MAXBUFSIZE );
+		  nbytes = read( sock, buffer, MAXBUFSIZE );
+		  printf( "$ %s\n", buffer);
 		  break;
 		}	
 	}
@@ -171,6 +176,24 @@ int createSocket( unsigned long ip, unsigned short port ) {
 
   return sock; 
 } // createSocket( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Gets the master list from the server
+void getMaster( Repository *r, int sock ) {
+  int nbytes;                // Number of Bytes
+  char buffer[ MAXBUFSIZE ]; // Buffer
+
+  nbytes = write( sock, "GET", MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+
+  bzero( buffer, MAXBUFSIZE );
+  nbytes = read( sock, buffer, MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+
+  memcpy( r, &buffer, sizeof( Repository ) );
+  printRepo( r );
+} // getMaster( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,11 +292,10 @@ void sendList( Folder *dir, int sock ) {
   //  FM temp; 
 
   ls( dir );
-  //printCatalog( dir );
 
   bzero( buffer, MAXBUFSIZE );
   sprintf( buffer, "%i", dir->total );
-  printf( "Will forward %s files\n", buffer );
+  printf( "$ Will forward %s files\n", buffer );
   nbytes = write( sock, buffer, MAXBUFSIZE );
   ERROR( nbytes < 0 );
 
@@ -283,6 +305,8 @@ void sendList( Folder *dir, int sock ) {
 	nbytes = write( sock, buffer, MAXBUFSIZE );
 	ERROR( nbytes < 0 );
   }
+
+  printCatalog( dir );
   
 } // sendList( )
 ////////////////////////////////////////////////////////////////////////////////

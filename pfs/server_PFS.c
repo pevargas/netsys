@@ -43,20 +43,25 @@ int registerClient( Repository *r, int sock );
 
 // Remove client from list
 int removeClient( Repository *r, int sock ); 
+
+// Send the master list
+void sendMaster( Repository *r, int sock );
+
+// Who is it?
+int whoisthis( Repository *r, int sock );
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 int main ( int argc, char * argv[ ] ) {
-  //
-  // Variables
-  //
-  int sock, nuSock;                  // This will be our sockets
-  int nbytes;                        // number of bytes we receive in our message
-  //  struct sockaddr_in client, remote; // "Internet socket address structure"
-  //unsigned int remote_length;        // length of the sockaddr_in structure
-  char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
-  char msg[ MAXBUFSIZE ];            // Message to return
-  Repository repo; // The registration list
+  int sock, nuSock;          // This will be our sockets
+  int nbytes;                // Number of bytes we receive in our message
+  int code;                  // Error code for Select
+  char buffer[ MAXBUFSIZE ]; // A buffer to store our received message
+  char msg[ MAXBUFSIZE ];    // A Message to return
+  Repository repo;           // The registration list
+  fd_set fds;
+  struct timeval timeout;
+  int count = 0;
 
   //
   // Make sure port is given on command line
@@ -73,18 +78,39 @@ int main ( int argc, char * argv[ ] ) {
   maxPrint( &repo );
   sock = createSocket( atoi( argv[1] ) );
 
+  timeout.tv_sec = 2;
+  timeout.tv_usec = 0;
+
+  FD_ZERO( &fds );
+  FD_SET( sock, &fds );
+  nuSock = acceptConnection( sock );
+  ERROR( nuSock < 0 );
+  FD_SET( nuSock, &fds );
+  
   //
   // Enter command loop
   //
   for ( ; ; ) {
-	printf( "$ Listening\n" );
-	// Loop through all the conenctions Available
-	while ( ( nuSock = acceptConnection( sock ) ) < 0 );
-
+	/*	if ( ( code = select( sizeof( fds )*8, &fds, NULL, NULL, &timeout ) ) < 0 ) {
+	  ERROR( code < 0 );
+	}
+	else if ( code == 0 ) {
+	  printf( "$ Timeout [%i]\r", count = ++count % 100 );
+	  ERROR( count );
+	}
+	else {
+	  count = 0;
+	  if ( FD_ISSET( sock, &fds ) ) {
+		// Loop through all the conenctions Available
+		while ( ( nuSock = acceptConnection( sock ) ) > 0 );
+		FD_SET( nuSock, &fds );
+	  }
+	*/	  
+	ERROR( nuSock < 0 );
 	bzero( buffer, MAXBUFSIZE );
 	nbytes = read( nuSock, buffer, MAXBUFSIZE );
 	ERROR( nbytes < 0 );
-	printf( "> %s\n", buffer );
+	printf( "[%s] %s\n", repo.cxn[whoisthis( &repo, nuSock )].name, buffer );
 	
 	switch ( parseCmd ( buffer ) ) 
 	  {
@@ -104,6 +130,9 @@ int main ( int argc, char * argv[ ] ) {
 			}
 		  break;
 		}
+	  case GET:
+		sendMaster( &repo, nuSock );
+		break;
 	  case EXIT:
 		{
 		  switch( removeClient( &repo, nuSock ) ) {
@@ -116,10 +145,14 @@ int main ( int argc, char * argv[ ] ) {
 		  }
 		  break;
 		}
-	  default: sprintf( msg, "> Invalid command: %s", buffer); break;
+	  default: 
+		sprintf( msg, "Invalid command: '%s'", buffer); 
+		nbytes = write( nuSock, msg, MAXBUFSIZE );
+		ERROR( nbytes < 0 );
+		break;
 	  }
   }
-
+  
   close( nuSock );
   close( sock );
   
@@ -141,8 +174,8 @@ int acceptConnection( int sock ) {
   if ( nuSock < 0 ) {
 	ERROR( (errno != ECHILD) && (errno != ERESTART) && (errno != EINTR) );
   }
-  // We are connected to the client!
-  printf( "> Client at %s:%i wants to talk\n", 
+  // We are connected to a NEW client!
+  printf( "> New Challenger Approaching! [%s:%i]\n", 
 		  inet_ntoa( remote.sin_addr ), ntohs( remote.sin_port ) );
   
   return nuSock;
@@ -161,7 +194,7 @@ int createSocket( unsigned short port ) {
   ERROR( sock < 0 );
 
   // Allow immediate Reuse of port
-  setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, &sockoptval, sizeof( int ) );
+  //  setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, &sockoptval, sizeof( int ) );
 
   // Construct local address structure
   bzero( &local, sizeof( local ) );            // Zero out structure
@@ -291,6 +324,41 @@ int registerClient( Repository *r, int sock ) {
 // Remove client from list
 int removeClient( Repository *r, int sock ) {
   int i;                      // Iterator
+  i = whoisthis( r, sock );
+  
+  if ( i != ( r->total - 1 ) ) {
+	for ( ; i < r->total - 1; ++i )
+	  memcpy( &r->cxn[i], &r->cxn[i+1], sizeof( r->cxn[i] ) );
+	
+	r->total--;
+  }
+  else {
+	return FAILURE;
+  }
+  
+  return SUCCESS;
+} // removeClient( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Send the master list
+void sendMaster( Repository *r, int sock ) {
+  int nbytes;                // Number of Bytes
+  char buffer[ MAXBUFSIZE ]; // Buffer
+
+  printf( "> Request Master List\n" );
+
+  bzero( buffer, MAXBUFSIZE );
+  memcpy( &buffer, r, sizeof( Repository ) );
+  nbytes = write( sock, r, MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+} // sendMaster( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Who is it?
+int whoisthis( Repository *r, int sock ) {
+  int i;                      // Iterator
   struct sockaddr_in remote;  // Local address
   unsigned int remote_length; // Length of address
   remote_length = sizeof( remote );
@@ -302,19 +370,11 @@ int removeClient( Repository *r, int sock ) {
 	  if ( ( r->cxn[i].sin_addr.s_addr == remote.sin_addr.s_addr ) &&
 		   ( r->cxn[i].sin_port        == remote.sin_port ) )
 		break;
-	
-	if ( i == r->total )
-	return FAILURE;
-	else 
-	  for ( ; i < r->total - 1; ++i )
-		memcpy( &r->cxn[i], &r->cxn[i+1], sizeof( r->cxn[i] ) );
-	
-	r->total--;
   }
   else {
-	return FAILURE;
+	return -1;
   }
 
-  return SUCCESS;
-}
+  return i;
+} // whoisthis( )
 ////////////////////////////////////////////////////////////////////////////////

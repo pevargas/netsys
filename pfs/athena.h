@@ -24,8 +24,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-enum COMMAND { SUCCESS, FAILURE, CONNECT, GET, LS, EXIT, INVALID };
-
 typedef struct {
   int size;              // The size of the file (in B)
   char name[ MAXLINE ];  // The name of the file
@@ -74,11 +72,11 @@ void maxPrint( Repository *r ) {
   int i, temp;
 
   if ( r->total < 1 ) {
-	r->max.fname = strlen( "File Name"  );
-	r->max.fsize = strlen( "File Size"  );
-	r->max.cname = strlen( "File Owner" ); 
-	r->max.addr  = strlen( "Owner IP "  );
-	r->max.port  = strlen( "Owner Port" );
+	r->max.fname = strlen( " File Name"  );
+	r->max.fsize = strlen( "File Size"   );
+	r->max.cname = strlen( "File Owner"  ); 
+	r->max.addr  = strlen( " Owner IP"   );
+	r->max.port  = strlen( "Owner Port"  );
   }
   else {
 	for ( i = 0; i < r->total; ++i ) {
@@ -99,6 +97,8 @@ void maxPrint( Repository *r ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Take the input and see what needs to be done.
+enum COMMAND { SUCCESS, FAILURE, CONNECT, GET, MY, LS, EXIT, INVALID };
+
 int parseCmd ( char cmd[ ] ) {
   int i;
   char command[ MAXBUFSIZE ];
@@ -113,6 +113,7 @@ int parseCmd ( char cmd[ ] ) {
   else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
   else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
   else if ( strcmp( "get",      command ) == 0 ) return GET;  
+  else if ( strcmp( "my",       command ) == 0 ) return MY;
   else if ( strcmp( "ls",       command ) == 0 ) return LS;
   else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
@@ -235,7 +236,7 @@ void printRepo ( Repository *r ) {
 	printf( "+\n" );
   } ////////////////////////////////////////
   
-  printf( "Clients:\t%i\tFiles:\t%i\n", r->total, count );
+  printf( "Clients:%i\tFiles:%i\n", r->total, count );
 } // printRepo( )
 ////////////////////////////////////////////////////////////////////////////////
 
