@@ -1,5 +1,5 @@
-User Datagram Protocol Assignment
-=================================
+Peer-To-Peer File Server Assignment
+===================================
 
 The requirements for this program is to
 
@@ -8,6 +8,10 @@ The requirements for this program is to
 
 The program is a peer-to-peer file distribution service. Each client will register its name and its files with the locatioin server. The location server districutes the complete list of filenames and file locations to each client. Clients then got directly to each peer to obtain the file they desire.
 
+**Please see the notes section for details**
+
+Author
+------
 **Patrick E. Vargas**
 
 *  BS Computer Science, Software Engineering  
@@ -45,13 +49,15 @@ Commands
 ### While running the client ####
 
 * Register name with file location server
-* Occurs on startup
 * Register files with file location server
-* Request master file list from file location server `ls`
-* Print master file list
-* Get file from another client `get`
-* Provide file to another client
+* List client's files `ls`
+* <del>Request master file list from file location server</del>
+* <del>Print master file list</del>
+* <del>Get file from another client</del>
+* <del>Provide file to another client</del>
 * Exit current client `exit`
+
+The strikes mean I uas unable to get this portion working after 30 hours of work and my limited capacity as a funciton human being.
 
 ### Other Useful Commands ###
 
@@ -64,6 +70,12 @@ This assignment is based on the my first assignment, "Programming Assignment 1 -
 
 Notes 
 -----
+
+After struggling with sockets and TCP for the majorit of the assignment, I was able to get some functionality working. When you boot up the client, assuming the server is booted as well, the client automatically requests to be registered. It then successfully send it's list of files to the server. While still in the client, you can also type `ls` to get the current list of it's files and `quit` to exit. I also at one point was able to register multiple clients and regject already registered clients. But that made it impossible for the old clients to continue working.
+
+Upon any other predefined commands, such as `get`, I recieve inifinte loop errors. I wasn't able to push out the master file list. Since this functionality didn't work, I was unable to move onto the sending of files between peers. I really whish we could have focused on that instead of networking i/o. A baseline program would have been effiecient since I'm a mere mortal and cannot possibly comprhend sockets. 
+
+I feel my solution would be to use the `select()` function in order to monitor all the sockets. I believe since the `accept()` function is blocking and only moves to the next connection when a new client connects that all my woes would be forgotten using the select function. Again, since I'm a mere mortal, I was unable to get select to work. After a single timeout, it would enter into an infinite loop. A functioning example provided by this university would have been nice. 
 
   [w]: http://www.vargascorpus.com/
   [e]: mailto:patrick.vargas@colorado.edu
