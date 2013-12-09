@@ -10,7 +10,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
 #include <memory.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -34,7 +33,7 @@
     exit ( EXIT_FAILURE );\
   }
 
-enum COMMAND { SUCCESS, FAILURE, PUT, GET, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
 
 typedef struct {
   int total;
@@ -92,9 +91,9 @@ int main ( int argc, char * argv[ ] ) {
   //
   // Variables
   //
-  //  int sock, ibind;                   // This will be our socket and bind
+  int sock, nuSock;                  // This will be our sockets
   int nbytes;                        // number of bytes we receive in our message
-  //struct sockaddr_in client, remote; // "Internet socket address structure"
+  //  struct sockaddr_in client, remote; // "Internet socket address structure"
   //unsigned int remote_length;        // length of the sockaddr_in structure
   char buffer[ MAXBUFSIZE ];         // a buffer to store our received message
   char msg[ MAXBUFSIZE ];            // Message to return
@@ -108,57 +107,70 @@ int main ( int argc, char * argv[ ] ) {
 	exit( EXIT_FAILURE );
   }
 
+  //
+  // Initialize all the things!
+  //
   repo.total = 0;
   maxPrint( &repo );
-  
-  //
-  // Set up the socket
-  //
-  int sock = createSocket( atoi( argv[1] ) );
-  int nuSock = acceptConnection( sock );
-  if ( registerClient( &repo, nuSock ) == SUCCESS ) {
-	sprintf( msg, "I got your message, %s!", repo.cxn[repo.total-1].name );
-	nbytes = send( nuSock, msg, MAXBUFSIZE, 0 );
-	ERROR( nbytes < 0 );
-  }
+  sock = createSocket( atoi( argv[1] ) );
 
-  /*  
   //
   // Enter command loop
   //
-  do {
-	// Wait for incoming message
-	bzero( buffer, sizeof( buffer ) );
-	nbytes = recvfrom( sock, buffer, MAXBUFSIZE, 0, ( struct sockaddr * ) &remote, &remote_length );
+  for ( ; ; ) {
+	printf( "$ Listening\n" );
+	// Loop through all the conenctions Available
+	while ( ( nuSock = acceptConnection( sock ) )  < 0 );
+
+	bzero( buffer, MAXBUFSIZE );
+	nbytes = read( nuSock, buffer, MAXBUFSIZE );
 	ERROR( nbytes < 0 );
-	printf( "Client(%s:%d): %s\n", inet_ntoa(remote.sin_addr), ntohs(remote.sin_port), buffer );
+	printf( "> %s\n", buffer );
 	
-	switch ( parseCmd ( buffer ) ) {
-	case PUT: put ( msg, buffer, sock, remote ); break;
-	case GET: get ( msg, buffer, sock, remote ); break;
-	case LS:
-	  *buffer = '\0';
-      *msg = '\0';
-	  fp = popen( "ls", "r" );
-	  ERROR( fp == NULL );
-	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
-		newline = strchr( buffer, '\n'); // Find the newline
-		if ( newline != NULL ) *newline = ' '; // Overwrite
-	    strcat( msg, buffer );
+	switch ( parseCmd ( buffer ) ) 
+	  {
+	  case CONNECT:
+		{
+		  nbytes = write( nuSock, "SUCCESS", MAXBUFSIZE );
+		  ERROR( nbytes < 0 );
+		  switch( registerClient( &repo, nuSock ) ) 
+			{
+			case SUCCESS:
+			  {
+				printf( "> Success in registering '%s'\n", repoy->cxn[r->total-1].name );
+			  }
+			case FAILURE:
+			  {
+				printf( "> Error in registration\n" );
+			  }
+			}		  
+		}
+	  case LS:
+		{
+		  /*		  *buffer = '\0';
+		   *msg = '\0';
+		   fp = popen( "ls", "r" );
+		   ERROR( fp == NULL );
+		   while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
+		   newline = strchr( buffer, '\n'); // Find the newline
+		   if ( newline != NULL ) *newline = ' '; // Overwrite
+		   strcat( msg, buffer );
+		   }
+		   ERROR( pclose( fp ) < 0 );
+		  */
+		  break;
+		}
+	  case EXIT: sprintf( msg, "$ Server will exit."); break;
+	  default: sprintf( msg, "Invalid command: %s", buffer); break;
 	  }
-	  ERROR( pclose( fp ) < 0 );
-	  break;
-	case EXIT: sprintf( msg, "Server will exit."); break;
-	default: sprintf( msg, "Invalid command: %s", buffer); break;
-	}
-	printf( "%s\n", msg );
+	//	printf( "%s\n", msg );
 	
 	// Send response
-	nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
-	ERROR( nbytes < 0 );
-	// printf( "Server sent %i bytes\n", nbytes);	
-  } while ( !isQuit( buffer ) );  
-  */  
+	//	nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
+	//ERROR( nbytes < 0 );
+  }
+	//  } while ( !isQuit( buffer ) );  
+
   close( nuSock );
   close( sock );
   
@@ -177,10 +189,12 @@ int acceptConnection( int sock ) {
   remote_length = sizeof( remote );
   // Wait for the client to connect
   nuSock = accept( sock, (struct sockaddr *) &remote, &remote_length );
-  ERROR( nuSock < 0 );
-
+  if ( nuSock < 0 ) {
+	ERROR( (errno != ECHILD) && (errno != ERESTART) && (errno != EINTR) );
+  }
   // We are connected to the client!
-  printf( "Handling client %s\n", inet_ntoa( remote.sin_addr ) );
+  printf( "> Client at %s:%i wants to talk\n", 
+		  inet_ntoa( remote.sin_addr ), ntohs( remote.sin_port ) );
   
   return nuSock;
 } // acceptConnection( )
@@ -193,7 +207,7 @@ int createSocket( unsigned short port ) {
   struct sockaddr_in local; // Local address
 
   // Create socket for incoming connections
-  sock = socket( PF_INET, SOCK_STREAM, 0 );
+  sock = socket( AF_INET, SOCK_STREAM, 0 );
   ERROR( sock < 0 );
 
   // Construct local address structure
@@ -208,7 +222,7 @@ int createSocket( unsigned short port ) {
   // Mark the socket so it will listen for incoming connections
   ERROR( listen( sock, MAXPENDING ) < 0 );
 
-  printf( "Waiting for client\n" );
+  printf( "$ Waiting for clients\n" );
 
   return sock; 
 } // createSocket( )
@@ -264,10 +278,10 @@ void maxPrint( Repository *r ) {
 	  if ( ( temp = strlen( inet_ntoa( r->cxn[r->total].sin_addr ) ) ) > r->max.addr )
 		r->max.addr = temp;
 	  
-	  if ( r->cxn[r->total].sin_port > 0 ) {
+	  /*if ( r->cxn[r->total].sin_port > 0 ) {
 		if ( ( temp = (int) log10( (double) r->cxn[r->total].sin_port ) + 1) > r->max.port )
 		  r->max.port = temp;
-	  }
+		  }*/
 	}
   }
 } // maxPrint( )
@@ -287,8 +301,7 @@ int parseCmd ( char cmd[ ] ) {
 
   if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
   else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
-  else if ( strcmp( "put",      command ) == 0 ) return PUT;
-  else if ( strcmp( "get",      command ) == 0 ) return GET;
+  else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
   else if ( strcmp( "ls",       command ) == 0 ) return LS;
   else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
@@ -340,14 +353,14 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Pretty print the catalog
 void printRepo ( Repository *r ) {
-  int i, temp;
+  int i;
   char header[ MAXLINE ];
   if ( r->total < 1 ) return;
 
-  temp = sprintf( header, "| %*s | %*s | %*s |", 
-				  r->max.cname, "File Owner", 
-				  r->max.addr,  "Owner IP",
-				  r->max.port,  "Owner Port" );
+  sprintf( header, "| %*s | %*s | %*s |", 
+		   r->max.cname, "File Owner", 
+		   r->max.addr,  "Owner IP",
+		   r->max.port,  "Owner Port" );
   { ////////////////////////////////////////
 	printf( "+" );
 
@@ -422,15 +435,15 @@ int registerClient( Repository *r, int sock ) {
   unsigned int remote_length; // Length of address
   remote_length = sizeof( remote );
 
-  bzero( buffer, sizeof( buffer ) );
-  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
+  bzero( buffer, MAXBUFSIZE );
+  nbytes = read( sock, buffer, MAXBUFSIZE );
   ERROR( nbytes < 0 );
-  printf( "Who is connecting? %s\n", buffer );
+  printf( "$ Checking if '%s' is already registered\n", buffer );
 
   for ( i = 0; i < r->total; ++i ) {
 	if ( strcmp( buffer, r->cxn[i].name ) == 0 ) {
 	  printf( "'%s' already exists\n", buffer );
-	  nbytes = send( sock, "FAILURE", MAXBUFSIZE, 0 );
+	  nbytes = write( sock, "FAILURE", MAXBUFSIZE );
 	  ERROR( nbytes < 0 );	  
 	  return FAILURE;
 	}
@@ -443,7 +456,10 @@ int registerClient( Repository *r, int sock ) {
 
   maxPrint( r );
   printRepo( r );
-  getList( r, sock );
+  //  getList( r, sock );
+  
+  nbytes = write( sock, "SUCCESS", MAXBUFSIZE );
+  ERROR( nbytes < 0 );	    
 
   return SUCCESS;
 } // registerClient( )

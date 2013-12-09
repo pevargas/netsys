@@ -10,7 +10,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
 #include <memory.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -29,7 +28,7 @@
     exit ( EXIT_FAILURE );												\
   }
 
-enum COMMAND { SUCCESS, FAILURE, PUT, GET, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
 
 typedef struct {
   char name[ MAXBUFSIZE ]; // Name of client
@@ -57,9 +56,6 @@ int parseCmd ( char cmd[ ] );
 // Pretty print the catalog
 void printCatalog ( Folder *dir );
 
-// Function to handle put command
-void put ( char cmd [ ], int sock, struct sockaddr_in remote );
-
 // Send my list of files
 void sendList( Folder *dir, int sock );
 
@@ -75,10 +71,10 @@ int main ( int argc, char * argv[ ] ) {
   int nbytes;                   // Number of bytes
   int sock;                     // This will be our socket
   char buffer[ MAXBUFSIZE ];    // Recieve data from Server
-  //  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
+  char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
   //char temp[ MAXBUFSIZE ];      // Temporary string holder
-  //char *newline = NULL;         // Get newline
-  //struct sockaddr_in remote;    // "Internet socket address structure"
+  char *newline = NULL;         // Get newline
+  //  struct sockaddr_in remote;    // "Internet socket address structure"
   //struct sockaddr_in from_addr; // Socket for server
   //unsigned int addr_length = sizeof( struct sockaddr );
   Folder dir;
@@ -89,29 +85,16 @@ int main ( int argc, char * argv[ ] ) {
 	exit ( EXIT_FAILURE );
   }
 
-  strcpy( dir.name, argv[1] );
+  sprintf( dir.name, "%s", argv[1] );
+  ls( &dir );
   
-  // 
-  // Set up the socket 
-  //
-  sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
-  if ( registerClient( &dir, sock ) == FAILURE ) {
-	close( sock );
-	return EXIT_SUCCESS;
-  }
+  printf( "$ Welcome '%s'\n", dir.name );
 
-  bzero( buffer, MAXBUFSIZE );
-  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
-  ERROR( nbytes < 0 );
-  printf( "%s\n", buffer );
-
-  /*
   //
   // Enter command loop
   //
   do {
-	*cmd = '\0';
-	//bzero( cmd, sizeof( cmd ) );
+	bzero( cmd, sizeof( cmd ) );
 	printf( "> " );
 	
 	//
@@ -126,29 +109,71 @@ int main ( int argc, char * argv[ ] ) {
 	  //    it will report an error if the message fails to leave the 
       //    computer.Hhowever, with UDP, there is no error if the message 
       //    is lost in the network once it leaves the computer.
-	  nbytes = sendto( sock, cmd, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-	  ERROR ( nbytes < 0 );
+	  //	  nbytes = sendto( sock, cmd, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
+	  //ERROR ( nbytes < 0 );
 	  
-	  //
-	  // Put Command
-	  //
-	  switch ( parseCmd ( cmd ) ) {
-	  case PUT:	put ( cmd, sock, remote ); break;
-	  case GET: get ( cmd, sock, remote ); break;
-	  }
+	  switch ( parseCmd ( cmd ) ) 
+		{
+		case CONNECT: 
+		  {
+			sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
+			nbytes = write( sock, "CONNECT", MAXBUFSIZE );
+			ERROR( nbytes < 0 );
+
+			bzero( buffer, MAXBUFSIZE );
+			nbytes = read( sock, buffer, MAXBUFSIZE );
+			ERROR ( nbytes < 0 );
+			switch ( parseCmd( buffer ) )
+			  {
+			  case SUCCESS: 
+				{
+				  printf( "$ Connection Established\n" );
+				  switch ( registerClient( &dir, sock ) ) 
+					{
+					case FAILURE: 
+					  {
+						printf( "$ There is already a user with the name '%s' on the server.\n", 
+								dir.name );
+						close( sock );
+						return EXIT_SUCCESS;
+					  }
+					case SUCCESS:
+					  {
+						printf( "$ You have been connected as %s\n", dir.name );
+						break;
+					  }
+					}
+
+				  break;
+				}
+				default: 
+				  {
+					printf( "Error in registering\n" );
+				  }
+			  }
+		  }
+		case LS:
+		  {
+		    printCatalog ( &dir );			
+			break;
+		  }
+		case EXIT: break;
+		default:
+		  {
+			printf( "Invalid Command\n");
+			break;
+		  }
+		}
 		
 	  // Blocks till bytes are received
-	  bzero( buffer, sizeof( buffer ) );
-	  nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
-	  ERROR ( nbytes < 0 );
+	  //bzero( buffer, sizeof( buffer ) );
+	  //nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
+	  //ERROR ( nbytes < 0 );
 	  
 	  printf( "%s\n", buffer );
 	}
-	else if ( strcmp( "get", temp ) == 0 ) {
-
-	}
   } while ( !isQuit( cmd ) );  
-  */
+
   close( sock );
   
   return EXIT_SUCCESS;
@@ -172,7 +197,7 @@ int createSocket( unsigned long ip, unsigned short port ) {
   remote.sin_port        = htons( port ); // Local port
 
   ERROR( connect( sock, (struct sockaddr *) &remote, sizeof( remote ) ) < 0 );
-  printf( "Connected to remote\n" );
+  printf( "$ Connected to remote\n" );
 
   return sock; 
 } // createSocket( )
@@ -247,8 +272,7 @@ int parseCmd ( char cmd[ ] ) {
 
   if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
   else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
-  else if ( strcmp( "put",      command ) == 0 ) return PUT;
-  else if ( strcmp( "get",      command ) == 0 ) return GET;
+  else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
   else if ( strcmp( "ls",       command ) == 0 ) return LS;
   else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
@@ -263,16 +287,15 @@ void printCatalog ( Folder *dir ) {
   if ( dir->total < 1 ) return;
 
   maxName = strlen( dir->list[0].name );
-  if ( dir->list[0].size > 0 ) maxSize = (int) log10( (double) dir->list[0].size ) + 1;
-  else                         maxSize = 1;
+  maxSize = 8;
 
   for ( i = 1; i < dir->total; ++i ) {
 	if ( ( temp = strlen( dir->list[i].name ) ) > maxName )
 	  maxName = temp;
 
-	if ( dir->list[i].size > 0 )
+	/*if ( dir->list[i].size > 0 )
 	  if ( ( temp = (int) log10( (double) dir->list[i].size ) + 1 ) > maxSize )
-		maxSize = temp;
+	  maxSize = temp;*/
   }
 
   temp = sprintf( header, "| %*s | %*s |", maxName, "File Name", maxSize, "Size" );
@@ -301,50 +324,6 @@ void printCatalog ( Folder *dir ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Function to handle put command
-void put ( char cmd [ ], int sock, struct sockaddr_in remote ) { 
-  int nbytes;                   // Number of bytes send by sendto()
-  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
-  char filename[ MAXBUFSIZE ];  // Name of file
-  FILE *fp;                     // Pointer to file
-  
-  // Check for filename
-  memcpy( filename, cmd + 4, strlen( cmd ) + 1 );
-  // Make sure filename isn't null
-  if ( strcmp( filename, "" ) != 0 ) {
-	fp = fopen( filename, "r" );
-	// See if file exists
-	if ( fp == NULL ) {
-	  // If file is MIA, print message to buffer
-	  if ( errno == ENOENT ) {
-		sprintf( buffer, "File does not exist" );
-		// Send buffer
-		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-		ERROR ( nbytes < 0 );
-	  }
-	  else ERROR ( fp == NULL );
-	} // fp == NULL
-	else {
-	  *buffer = '\0';
-	  // Else read contents of file into buffer
-	  while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
-		printf( "%s", buffer );
-		// Send one line from file
-		nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-		ERROR ( nbytes < 0 );
-	  }
-	  // Tell server we're done
-	  sprintf( buffer, "Finished putting file" );
-	  // Send buffer
-	  nbytes = sendto( sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-	  ERROR ( nbytes < 0 );
-	  ERROR ( fclose( fp ) );
-	}
-  } // filename != ""
-} // put( )
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 // Send my list of files
 void sendList( Folder *dir, int sock ) {
   int nbytes;             // Number of bytes
@@ -355,7 +334,7 @@ void sendList( Folder *dir, int sock ) {
   
   sprintf( msg, "%i", dir->total );
   printf( "Will forward %s files\n", msg );
-  nbytes = send( sock, msg, MAXBUFSIZE, 0 );
+  nbytes = write( sock, msg, MAXBUFSIZE );
   ERROR( nbytes < 0 );
   
 } // sendList( )
@@ -364,25 +343,19 @@ void sendList( Folder *dir, int sock ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Register myself with the server
 int registerClient( Folder *dir, int sock ) {
-  int cmd;                   // The command
   int nbytes;                // Number of bytes
   char buffer[ MAXBUFSIZE ]; // Buffer
+  
+  printf( "$ Sending name '%s'\n", dir->name );
+  sprintf( buffer, "%s", dir->name );
 
-  nbytes = send( sock, dir->name, MAXBUFSIZE, 0 );
+  nbytes = write( sock, dir->name, MAXBUFSIZE );
   ERROR( nbytes < 0 );
 
   bzero( buffer, MAXBUFSIZE );
-  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
-  printf( "%s\n", buffer );
+  nbytes = read( sock, buffer, MAXBUFSIZE );
+  ERROR( nbytes < 0 );
 
-  if ( ( cmd = parseCmd( buffer ) ) == FAILURE ) {
-	printf( "There is already a user with the name '%s' on the server.\n", 
-			dir->name );
-  }
-  else if ( cmd == GET ) {
-	sendList( dir, sock );
-  }
-
-  return cmd;
+  return parseCmd( buffer );
 } // registerClient( )
 ////////////////////////////////////////////////////////////////////////////////
