@@ -22,8 +22,9 @@ Included Files
 
 1. client_PFS.c
 2. server_PFS.c
-3. makefile
-4. README.txt (this file)
+3. athena.h
+4. makefile
+5. README.txt (this file)
 
 Commands
 --------
@@ -44,6 +45,7 @@ Commands
 ### While running the client ####
 
 * Register name with file location server
+* Occurs on startup
 * Register files with file location server
 * Request master file list from file location server `ls`
 * Print master file list
