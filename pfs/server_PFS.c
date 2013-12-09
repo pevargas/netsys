@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MAXBUFSIZE 100
+#define MAXBUFSIZE 512
 #define MAXLINE    256
 #define MAXPENDING 5
 #define MAXFILES   512
@@ -35,17 +35,19 @@
 
 enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
 
+typedef struct {  
+  int size;              // The size of the file (in B)
+  char name[ MAXLINE ];  // The name of the file
+} FM;                    // FileMeta
+
 typedef struct {
   int total;
   struct {
 	  char name[MAXLINE];      // File owner
 	  struct in_addr sin_addr; // Address of owner
 	  unsigned short sin_port; // Port of owner 
-	  int entires;             // Number of Files
-	  struct {
-	    char name[ MAXLINE ];  // The name of the file
-	    int size;              // The size of the file (in B)
-	  } list[ MAXFILES ];
+	  int entries;             // Number of Files
+	  FM list[ MAXFILES ];
   } cxn[ MAXCLIENTS ];
   struct {
 	int cname; // Maxlength of Conneciton name
@@ -84,6 +86,9 @@ void printRepo ( Repository *r );
 
 // Register the client
 int registerClient( Repository *r, int sock );
+
+// Remove client from list
+int removeClient( Repository *r, int sock ); 
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,38 +141,34 @@ int main ( int argc, char * argv[ ] ) {
 		  switch( registerClient( &repo, nuSock ) ) 
 			{
 			case SUCCESS:
+			  getList ( &repo, nuSock );
+			  printf( "> Success in registering '%s'\n", repo.cxn[repo.total-1].name );
+			  break;
+			case FAILURE:
+			  printf( "> Error in registration\n" );
+			  break;
+			}
+		  break;
+		}
+	  case EXIT:
+		{
+		  switch( removeClient( &repo, nuSock ) )
+			{
+			case SUCCESS: 
 			  {
-				printf( "> Success in registering '%s'\n", repo.cxn[repo.total-1].name );
+			    printf( "> Client has been removed.\n" );
+				break;
 			  }
 			case FAILURE:
 			  {
-				printf( "> Error in registration\n" );
+				printf( "> Error removing client.\n" );
+				break;
 			  }
-			}		  
-		}
-	  case LS:
-		{
-		  /*		  *buffer = '\0';
-		   *msg = '\0';
-		   fp = popen( "ls", "r" );
-		   ERROR( fp == NULL );
-		   while ( fgets( buffer, MAXBUFSIZE, fp ) != NULL ) {
-		   newline = strchr( buffer, '\n'); // Find the newline
-		   if ( newline != NULL ) *newline = ' '; // Overwrite
-		   strcat( msg, buffer );
-		   }
-		   ERROR( pclose( fp ) < 0 );
-		  */
+			}
 		  break;
 		}
-	  case EXIT: sprintf( msg, "$ Server will exit."); break;
-	  default: sprintf( msg, "Invalid command: %s", buffer); break;
+	  default: sprintf( msg, "> Invalid command: %s", buffer); break;
 	  }
-	//	printf( "%s\n", msg );
-	
-	// Send response
-	//	nbytes = sendto( sock, msg, nbytes, 0, (struct sockaddr *)&remote, sizeof(remote));
-	//ERROR( nbytes < 0 );
   }
 	//  } while ( !isQuit( buffer ) );  
 
@@ -243,20 +244,31 @@ int isQuit ( char cmd[ ] ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Function to get the list from a certain connection
 void getList ( Repository *r, int sock ) {
-  char buffer[ MAXBUFSIZE ]; // Buffer
-  char msg[ MAXBUFSIZE ];    // Message to send
+  int i;                     // Iterator
   int nbytes;                // Number of Bytes
   int n;                     // Number of files to add
+  char buffer[ MAXBUFSIZE ]; // Buffer
+  char msg[ MAXBUFSIZE ];    // Message to send
   
-  nbytes = send( sock, "GET", MAXBUFSIZE, 0 );
-  ERROR( nbytes < 0 );
-  
-  bzero( buffer, sizeof( buffer ) );
-  nbytes = recv( sock, buffer, MAXBUFSIZE, MSG_WAITALL );
-  ERROR( nbytes < 0 );
-  n = atoi( buffer );
-  printf( "Will add %i files\n",  n );
+  do {
+	bzero( buffer, MAXBUFSIZE );
+	nbytes = read( sock, buffer, MAXBUFSIZE );
+	ERROR( nbytes < 0 );
+	printf( "$ '%s'\n", buffer );
+  }	while( !strcmp( buffer, "" ) );
 
+  n = atoi( buffer );
+  printf( "$ Will add %i files\n",  n );
+
+  r->cxn[r->total - 1].entries = n;
+
+  for ( i = 0; i < n; ++i ){
+	nbytes = read( sock, buffer, MAXBUFSIZE );
+	ERROR( nbytes < 0 );
+	memcpy( &r->cxn[r->total -1].list[i], &buffer, sizeof( FM ) );
+  }
+
+			  
 } // getList( )
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -353,15 +365,26 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Pretty print the catalog
 void printRepo ( Repository *r ) {
-  int i;
+  int i, j;
+  int count = 0;
   char header[ MAXLINE ];
   if ( r->total < 1 ) return;
 
-  sprintf( header, "| %*s | %*s | %*s |", 
+  sprintf( header, "| %*s | %*s | %*s | %*s | %*s |", 
+		   r->max.fname, "File Name",
+		   r->max.fsize, "File Size",
 		   r->max.cname, "File Owner", 
 		   r->max.addr,  "Owner IP",
 		   r->max.port,  "Owner Port" );
   { ////////////////////////////////////////
+	printf( "+" );
+
+	for ( i = 1; i < r->max.fname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.fsize + 3; ++i )
+	  printf( "-" );
 	printf( "+" );
 
 	for ( i = 1; i < r->max.cname + 3; ++i )
@@ -383,6 +406,14 @@ void printRepo ( Repository *r ) {
   { ////////////////////////////////////////
 	printf( "+" );
 
+	for ( i = 1; i < r->max.fname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.fsize + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
 	for ( i = 1; i < r->max.cname + 3; ++i )
 	  printf( "-" );
 	printf( "+" );
@@ -398,13 +429,36 @@ void printRepo ( Repository *r ) {
   } ////////////////////////////////////////
   
   for ( i = 0; i < r->total; ++i ) {
-	printf( "| %*s | %*s | %*i |\n",
-			r->max.cname, r->cxn[i].name, 
-			r->max.addr,  inet_ntoa( r->cxn[i].sin_addr ), 
-			r->max.port,  r->cxn[i].sin_port );
+	if ( r->cxn[i].entries == 0 ) {
+	  printf( "| %*s | %*s | %*s | %*s | %*i |\n",
+			  r->max.fname, "X",
+			  r->max.fsize, "X",
+			  r->max.cname, r->cxn[i].name, 
+			  r->max.addr,  inet_ntoa( r->cxn[i].sin_addr ), 
+			  r->max.port,  r->cxn[i].sin_port );
+	}
+	else {
+	  for ( j = 0; j < r->cxn[i].entries; ++j ) {
+		printf( "| %*s | %*i | %*s | %*s | %*i |\n",
+				r->max.fname, r->cxn[i].list[j].name,
+				r->max.fsize, r->cxn[i].list[j].size,
+				r->max.cname, r->cxn[i].name, 
+				r->max.addr,  inet_ntoa( r->cxn[i].sin_addr ), 
+				r->max.port,  r->cxn[i].sin_port );
+		count++;
+	  }
+	}
   }
   
   { ////////////////////////////////////////
+	printf( "+" );
+
+	for ( i = 1; i < r->max.fname + 3; ++i )
+	  printf( "-" );
+	printf( "+" );
+
+	for ( i = 1; i < r->max.fsize + 3; ++i )
+	  printf( "-" );
 	printf( "+" );
 
 	for ( i = 1; i < r->max.cname + 3; ++i )
@@ -421,7 +475,7 @@ void printRepo ( Repository *r ) {
 	printf( "+\n" );
   } ////////////////////////////////////////
   
-  printf( "Total:\t%i\n", r->total );
+  printf( "Clients:\t%i\tFiles:\t%i\n", r->total, count );
 } // printRepo( )
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -437,6 +491,8 @@ int registerClient( Repository *r, int sock ) {
 
   bzero( buffer, MAXBUFSIZE );
   nbytes = read( sock, buffer, MAXBUFSIZE );
+  //  nbytes = read( sock, buffer, MAXBUFSIZE );
+  //nbytes = read( sock, buffer, MAXBUFSIZE );
   ERROR( nbytes < 0 );
   printf( "$ Checking if '%s' is already registered\n", buffer );
 
@@ -451,6 +507,7 @@ int registerClient( Repository *r, int sock ) {
  
   ERROR( getsockname( sock, (struct sockaddr *) &remote, &remote_length ) < 0 );
   strcpy( r->cxn[r->total].name, buffer );
+  r->cxn[r->total].entries         = 0;
   r->cxn[r->total].sin_addr.s_addr = remote.sin_addr.s_addr;
   r->cxn[r->total++].sin_port      = remote.sin_port;
 
@@ -463,4 +520,36 @@ int registerClient( Repository *r, int sock ) {
 
   return SUCCESS;
 } // registerClient( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Remove client from list
+int removeClient( Repository *r, int sock ) {
+  int i;                      // Iterator
+  struct sockaddr_in remote;  // Local address
+  unsigned int remote_length; // Length of address
+  remote_length = sizeof( remote );
+  
+  ERROR( getsockname( sock, (struct sockaddr *) &remote, &remote_length ) < 0 );
+
+  if ( r->total > 0 ) {
+	for ( i = 0; i < r->total; ++i )
+	  if ( ( r->cxn[i].sin_addr.s_addr == remote.sin_addr.s_addr ) &&
+		   ( r->cxn[i].sin_port        == remote.sin_port ) )
+		break;
+	
+	if ( i == r->total )
+	return FAILURE;
+	else 
+	  for ( ; i < r->total - 1; ++i )
+		memcpy( &r->cxn[i], &r->cxn[i+1], sizeof( r->cxn[i] ) );
+	
+	r->total--;
+  }
+  else {
+	return FAILURE;
+  }
+
+  return SUCCESS;
+}
 ////////////////////////////////////////////////////////////////////////////////

@@ -20,7 +20,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAXBUFSIZE 256
+#define MAXBUFSIZE 512
 #define MAXLINE    256
 #define MAXFILES   512
 #define ERROR( boolean ) if ( boolean ) {								\
@@ -31,13 +31,16 @@
 enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
 
 typedef struct {
+  int size;              // The size of the file (in B)
+  char name[ MAXLINE ];  // The name of the file
+} FM;                    // FileMeta
+
+typedef struct {
   char name[ MAXBUFSIZE ]; // Name of client
   int total;               // Total number of files
-  struct {
-	char name[ MAXLINE ];  // The name of the file
-	int size;              // The size of the file (in B)
-  } list[ MAXFILES ];
+  FM list[ MAXFILES ];
 } Folder;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,14 +107,6 @@ int main ( int argc, char * argv[ ] ) {
 	  newline = strchr( cmd, '\n'); // Find the newline
 	  if ( newline != NULL ) *newline = '\0'; // Overwrite
 	  
-	  //
-	  // sendto() sends immediately.  
-	  //    it will report an error if the message fails to leave the 
-      //    computer.Hhowever, with UDP, there is no error if the message 
-      //    is lost in the network once it leaves the computer.
-	  //	  nbytes = sendto( sock, cmd, MAXBUFSIZE, 0, (struct sockaddr *) &remote, sizeof(remote));
-	  //ERROR ( nbytes < 0 );
-	  
 	  switch ( parseCmd ( cmd ) ) 
 		{
 		case CONNECT: 
@@ -140,16 +135,24 @@ int main ( int argc, char * argv[ ] ) {
 					case SUCCESS:
 					  {
 						printf( "$ You have been connected as %s\n", dir.name );
+						//						sendList( &dir, sock );
+						ls( &dir );
+						printCatalog( &dir );
+						bzero( buffer, MAXBUFSIZE );
+						sprintf( buffer, "%i", dir.total );
+						printf( "Will forward %s files\n", buffer );
+						nbytes = write( sock, buffer, MAXBUFSIZE );
+						ERROR( nbytes < 0 );
 						break;
 					  }
 					}
-
+				  
 				  break;
 				}
-				default: 
-				  {
-					printf( "Error in registering\n" );
-				  }
+			  default: 
+				{
+				  printf( "$ Error in registering\n" );
+				}
 			  }
 		  }
 		case LS:
@@ -157,20 +160,16 @@ int main ( int argc, char * argv[ ] ) {
 		    printCatalog ( &dir );			
 			break;
 		  }
-		case EXIT: break;
+		case EXIT: 
+		  nbytes = write( sock, "EXIT", MAXBUFSIZE );
+		  ERROR( nbytes < 0 );
+		  break;
 		default:
 		  {
-			printf( "Invalid Command\n");
+			printf( "$ Invalid Command\n");
 			break;
 		  }
-		}
-		
-	  // Blocks till bytes are received
-	  //bzero( buffer, sizeof( buffer ) );
-	  //nbytes = recvfrom(sock, buffer, MAXBUFSIZE, 0, (struct sockaddr *) &from_addr, &addr_length);  
-	  //ERROR ( nbytes < 0 );
-	  
-	  printf( "%s\n", buffer );
+		}	
 	}
   } while ( !isQuit( cmd ) );  
 
@@ -326,16 +325,26 @@ void printCatalog ( Folder *dir ) {
 ////////////////////////////////////////////////////////////////////////////////
 // Send my list of files
 void sendList( Folder *dir, int sock ) {
+  int i;                  // Iterator
   int nbytes;             // Number of bytes
-  char msg[ MAXBUFSIZE ]; // Message to send
+  char buffer[ MAXBUFSIZE ]; // Message to send
+  FM temp; 
 
   ls( dir );
-  printCatalog( dir );
-  
-  sprintf( msg, "%i", dir->total );
-  printf( "Will forward %s files\n", msg );
-  nbytes = write( sock, msg, MAXBUFSIZE );
+  //printCatalog( dir );
+
+  bzero( buffer, MAXBUFSIZE );
+  sprintf( buffer, "%i", dir->total );
+  printf( "Will forward %s files\n", buffer );
+  nbytes = write( sock, buffer, MAXBUFSIZE );
   ERROR( nbytes < 0 );
+
+  for ( i = 0; i < dir->total; ++i ){
+	bzero( buffer, MAXBUFSIZE );
+	memcpy( &buffer, &dir->list[i], sizeof( FM ) );
+	nbytes = write( sock, buffer, MAXBUFSIZE );
+	ERROR( nbytes < 0 );
+  }
   
 } // sendList( )
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,7 +354,7 @@ void sendList( Folder *dir, int sock ) {
 int registerClient( Folder *dir, int sock ) {
   int nbytes;                // Number of bytes
   char buffer[ MAXBUFSIZE ]; // Buffer
-  
+
   printf( "$ Sending name '%s'\n", dir->name );
   sprintf( buffer, "%s", dir->name );
 
