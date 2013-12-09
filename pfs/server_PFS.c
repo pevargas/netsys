@@ -137,7 +137,7 @@ int main ( int argc, char * argv[ ] ) {
 			{
 			case SUCCESS:
 			  {
-				printf( "> Success in registering '%s'\n", repoy->cxn[r->total-1].name );
+				printf( "> Success in registering '%s'\n", repo.cxn[repo.total-1].name );
 			  }
 			case FAILURE:
 			  {
