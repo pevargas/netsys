@@ -23,6 +23,7 @@ deploy:
 	@mkdir vargasp_pfs;
 	@cp client_PFS.c vargasp_pfs;
 	@cp server_PFS.c vargasp_pfs;
+	@cp athena.h vargasp_pfs;
 	@cp makefile vargasp_pfs;
 	@cp README.md vargasp_pfs/README.txt;
 	@tar -cvf vargasp_pfs.tar vargasp_pfs;

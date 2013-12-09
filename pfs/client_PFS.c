@@ -20,46 +20,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAXBUFSIZE 512
-#define MAXLINE    256
-#define MAXFILES   512
-#define MAXCLIENTS 5
-#define ERROR( boolean ) if ( boolean ) {								\
-    fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );	\
-    exit ( EXIT_FAILURE );												\
-  }
-
-enum COMMAND { SUCCESS, FAILURE, CONNECT, GET, LS, EXIT, INVALID };
-
-typedef struct {
-  int size;              // The size of the file (in B)
-  char name[ MAXLINE ];  // The name of the file
-} FM;                    // FileMeta
-
-typedef struct {
-  char name[ MAXBUFSIZE ]; // Name of client
-  int total;               // Total number of files
-  FM list[ MAXFILES ];
-} Folder;
-
-typedef struct {
-  int total;
-  struct {
-	  int entries;             // Number of Files
-	  struct in_addr sin_addr; // Address of owner
-	  unsigned short sin_port; // Port of owner 
-	  char name[ MAXLINE ];      // File owner
-	  FM list[ MAXFILES ];
-  } cxn[ MAXCLIENTS ];
-  struct {
-	int cname; // Maxlength of Conneciton name
-	int addr;  // Max address length
-	int port;  // Max port length
-	int fname; // Max file name length
-	int fsize; // Max Size length
-  } max; // Used in printing table, Don't judge my OCD
-} Repository;
-
+#include "athena.h"
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +30,8 @@ void connectPlease( Folder *dir, int sock );
 // Creates a socket for the ip address and port - From ***REFERENCE***
 int createSocket( unsigned long ip, unsigned short port );
 
-// Function to see if it's time to terminate program.
-int isQuit ( char cmd[ ] );
-
 // List all the files this client has.
 void ls ( Folder *dir ); 
-
-// Take the input and see what needs to be done.
-int parseCmd ( char cmd[ ] );
 
 // Pretty print the catalog
 void printCatalog ( Folder *dir );
@@ -219,18 +174,6 @@ int createSocket( unsigned long ip, unsigned short port ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Function to see if it's time to terminate program.
-int isQuit ( char cmd[ ] ) {
-  // Convert string to lowercase
-  int i;
-  for (i = 0; cmd[i]; ++i ) cmd[i] = tolower( cmd[i] );
-
-  if ( strcmp( "exit", cmd ) == 0 ) return 1;
-  return 0;
-} // isQuit( )
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 // List all the files this client has. Returns the number of files
 void ls ( Folder *dir ) {
   int count;                 // The token number
@@ -270,28 +213,6 @@ void ls ( Folder *dir ) {
 	}
   }
   ERROR( pclose( fp ) < 0 );
-}
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// Take the input and see what needs to be done.
-int parseCmd ( char cmd[ ] ) {
-  int i;
-  char command[ MAXBUFSIZE ];
-
-  // Convert string to lowercase
-  for (i = 0; cmd[i]; ++i ) cmd[i] = tolower( cmd[i] );
-
-  // Get the command
-  sscanf( cmd, "%s", command );
-
-  if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
-  else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
-  else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
-  else if ( strcmp( "get",      command ) == 0 ) return GET;  
-  else if ( strcmp( "ls",       command ) == 0 ) return LS;
-  else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
-  else return INVALID;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
