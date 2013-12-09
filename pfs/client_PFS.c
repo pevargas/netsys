@@ -23,12 +23,13 @@
 #define MAXBUFSIZE 512
 #define MAXLINE    256
 #define MAXFILES   512
+#define MAXCLIENTS 5
 #define ERROR( boolean ) if ( boolean ) {								\
     fprintf( stderr, "[%s:%i] %s\n", __FILE__, __LINE__-1, strerror( errno ) );	\
     exit ( EXIT_FAILURE );												\
   }
 
-enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, CONNECT, GET, LS, EXIT, INVALID };
 
 typedef struct {
   int size;              // The size of the file (in B)
@@ -41,9 +42,30 @@ typedef struct {
   FM list[ MAXFILES ];
 } Folder;
 
+typedef struct {
+  int total;
+  struct {
+	  int entries;             // Number of Files
+	  struct in_addr sin_addr; // Address of owner
+	  unsigned short sin_port; // Port of owner 
+	  char name[ MAXLINE ];      // File owner
+	  FM list[ MAXFILES ];
+  } cxn[ MAXCLIENTS ];
+  struct {
+	int cname; // Maxlength of Conneciton name
+	int addr;  // Max address length
+	int port;  // Max port length
+	int fname; // Max file name length
+	int fsize; // Max Size length
+  } max; // Used in printing table, Don't judge my OCD
+} Repository;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+// Funciton to connect and register and all that nonsense
+void connectPlease( Folder *dir, int sock );
+
 // Creates a socket for the ip address and port - From ***REFERENCE***
 int createSocket( unsigned long ip, unsigned short port );
 
@@ -73,7 +95,7 @@ int main ( int argc, char * argv[ ] ) {
   // 
   int nbytes;                   // Number of bytes
   int sock;                     // This will be our socket
-  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
+  //  char buffer[ MAXBUFSIZE ];    // Recieve data from Server
   char cmd[ MAXBUFSIZE ];       // Command to be sent to Server
   //char temp[ MAXBUFSIZE ];      // Temporary string holder
   char *newline = NULL;         // Get newline
@@ -92,7 +114,10 @@ int main ( int argc, char * argv[ ] ) {
   ls( &dir );
   
   printf( "$ Welcome '%s'\n", dir.name );
-
+  
+  sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
+  connectPlease( &dir, sock );
+ 
   //
   // Enter command loop
   //
@@ -109,66 +134,16 @@ int main ( int argc, char * argv[ ] ) {
 	  
 	  switch ( parseCmd ( cmd ) ) 
 		{
-		case CONNECT: 
-		  {
-			sock = createSocket( inet_addr( argv[2] ), atoi( argv[3] ) );
-			nbytes = write( sock, "CONNECT", MAXBUFSIZE );
-			ERROR( nbytes < 0 );
-
-			bzero( buffer, MAXBUFSIZE );
-			nbytes = read( sock, buffer, MAXBUFSIZE );
-			ERROR ( nbytes < 0 );
-			switch ( parseCmd( buffer ) )
-			  {
-			  case SUCCESS: 
-				{
-				  printf( "$ Connection Established\n" );
-				  switch ( registerClient( &dir, sock ) ) 
-					{
-					case FAILURE: 
-					  {
-						printf( "$ There is already a user with the name '%s' on the server.\n", 
-								dir.name );
-						close( sock );
-						return EXIT_SUCCESS;
-					  }
-					case SUCCESS:
-					  {
-						printf( "$ You have been connected as %s\n", dir.name );
-						//						sendList( &dir, sock );
-						ls( &dir );
-						printCatalog( &dir );
-						bzero( buffer, MAXBUFSIZE );
-						sprintf( buffer, "%i", dir.total );
-						printf( "Will forward %s files\n", buffer );
-						nbytes = write( sock, buffer, MAXBUFSIZE );
-						ERROR( nbytes < 0 );
-						break;
-					  }
-					}
-				  
-				  break;
-				}
-			  default: 
-				{
-				  printf( "$ Error in registering\n" );
-				}
-			  }
-		  }
 		case LS:
-		  {
-		    printCatalog ( &dir );			
-			break;
-		  }
+		  printCatalog ( &dir );			
+		  break;
 		case EXIT: 
 		  nbytes = write( sock, "EXIT", MAXBUFSIZE );
 		  ERROR( nbytes < 0 );
 		  break;
 		default:
-		  {
-			printf( "$ Invalid Command\n");
-			break;
-		  }
+		  printf( "$ Invalid Command\n");
+		  break;
 		}	
 	}
   } while ( !isQuit( cmd ) );  
@@ -177,6 +152,47 @@ int main ( int argc, char * argv[ ] ) {
   
   return EXIT_SUCCESS;
 } // main( )
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Funciton to connect and register and all that nonsense
+void connectPlease( Folder *dir, int sock ) {
+  int nbytes;                // Number of bytes
+  char buffer[ MAXBUFSIZE ]; // Buffer
+
+  nbytes = write( sock, "CONNECT", MAXBUFSIZE );
+  ERROR( nbytes < 0 );
+  
+  bzero( buffer, MAXBUFSIZE );
+  nbytes = read( sock, buffer, MAXBUFSIZE );
+  ERROR ( nbytes < 0 );
+  switch ( parseCmd( buffer ) ) {
+  case CONNECT:
+	{
+	  printf( "$ Connection Established\n" );
+	  switch ( registerClient( dir, sock ) ) {
+	  case FAILURE: 
+		{
+		  printf( "$ There is already a user with the name '%s' on the server.\n", 
+				  dir->name );
+		  close( sock );
+		  exit( EXIT_SUCCESS );
+		}
+	  case SUCCESS:
+		{
+		  printf( "$ You have been connected as %s\n", dir->name );
+		  sendList( dir, sock );
+		  break;
+		}
+	  }	  
+	  break;
+	}
+  default: 
+	{
+	  printf( "$ Error in registering\n" );
+	}
+  }
+} // connectionPlease( )
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,6 +288,7 @@ int parseCmd ( char cmd[ ] ) {
   if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
   else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
   else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
+  else if ( strcmp( "get",      command ) == 0 ) return GET;  
   else if ( strcmp( "ls",       command ) == 0 ) return LS;
   else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
@@ -328,7 +345,7 @@ void sendList( Folder *dir, int sock ) {
   int i;                  // Iterator
   int nbytes;             // Number of bytes
   char buffer[ MAXBUFSIZE ]; // Message to send
-  FM temp; 
+  //  FM temp; 
 
   ls( dir );
   //printCatalog( dir );

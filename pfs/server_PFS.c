@@ -33,7 +33,7 @@
     exit ( EXIT_FAILURE );\
   }
 
-enum COMMAND { SUCCESS, FAILURE, CONNECT, LS, EXIT, INVALID };
+enum COMMAND { SUCCESS, FAILURE, CONNECT, GET, LS, EXIT, INVALID };
 
 typedef struct {  
   int size;              // The size of the file (in B)
@@ -43,10 +43,10 @@ typedef struct {
 typedef struct {
   int total;
   struct {
-	  char name[MAXLINE];      // File owner
+	  int entries;             // Number of Files
 	  struct in_addr sin_addr; // Address of owner
 	  unsigned short sin_port; // Port of owner 
-	  int entries;             // Number of Files
+	  char name[ MAXLINE ];      // File owner
 	  FM list[ MAXFILES ];
   } cxn[ MAXCLIENTS ];
   struct {
@@ -125,7 +125,7 @@ int main ( int argc, char * argv[ ] ) {
   for ( ; ; ) {
 	printf( "$ Listening\n" );
 	// Loop through all the conenctions Available
-	while ( ( nuSock = acceptConnection( sock ) )  < 0 );
+	while ( ( nuSock = acceptConnection( sock ) ) < 0 );
 
 	bzero( buffer, MAXBUFSIZE );
 	nbytes = read( nuSock, buffer, MAXBUFSIZE );
@@ -136,7 +136,7 @@ int main ( int argc, char * argv[ ] ) {
 	  {
 	  case CONNECT:
 		{
-		  nbytes = write( nuSock, "SUCCESS", MAXBUFSIZE );
+		  nbytes = write( nuSock, buffer, MAXBUFSIZE );
 		  ERROR( nbytes < 0 );
 		  switch( registerClient( &repo, nuSock ) ) 
 			{
@@ -152,25 +152,19 @@ int main ( int argc, char * argv[ ] ) {
 		}
 	  case EXIT:
 		{
-		  switch( removeClient( &repo, nuSock ) )
-			{
-			case SUCCESS: 
-			  {
-			    printf( "> Client has been removed.\n" );
-				break;
-			  }
-			case FAILURE:
-			  {
-				printf( "> Error removing client.\n" );
-				break;
-			  }
-			}
+		  switch( removeClient( &repo, nuSock ) ) {
+		  case SUCCESS: 
+			printf( "> Client has been removed.\n" );
+			break;
+		  case FAILURE:
+			printf( "> Error removing client.\n" );
+			break;
+		  }
 		  break;
 		}
 	  default: sprintf( msg, "> Invalid command: %s", buffer); break;
 	  }
   }
-	//  } while ( !isQuit( buffer ) );  
 
   close( nuSock );
   close( sock );
@@ -248,7 +242,6 @@ void getList ( Repository *r, int sock ) {
   int nbytes;                // Number of Bytes
   int n;                     // Number of files to add
   char buffer[ MAXBUFSIZE ]; // Buffer
-  char msg[ MAXBUFSIZE ];    // Message to send
   
   do {
 	bzero( buffer, MAXBUFSIZE );
@@ -268,7 +261,8 @@ void getList ( Repository *r, int sock ) {
 	memcpy( &r->cxn[r->total -1].list[i], &buffer, sizeof( FM ) );
   }
 
-			  
+  maxPrint( r );
+  printRepo( r );
 } // getList( )
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -278,8 +272,10 @@ void maxPrint( Repository *r ) {
   int i, temp;
 
   if ( r->total < 1 ) {
+	r->max.fname = strlen( "File Name"  );
+	r->max.fsize = strlen( "File Size"  );
 	r->max.cname = strlen( "File Owner" ); 
-	r->max.addr  = strlen( "Owner IP " );
+	r->max.addr  = strlen( "Owner IP "  );
 	r->max.port  = strlen( "Owner Port" );
   }
   else {
@@ -314,6 +310,7 @@ int parseCmd ( char cmd[ ] ) {
   if      ( strcmp( "success",  command ) == 0 ) return SUCCESS;
   else if ( strcmp( "failure",  command ) == 0 ) return FAILURE;
   else if ( strcmp( "connect",  command ) == 0 ) return CONNECT;
+  else if ( strcmp( "get",      command ) == 0 ) return GET;  
   else if ( strcmp( "ls",       command ) == 0 ) return LS;
   else if ( strcmp( "exit",     command ) == 0 ) return EXIT;
   else return INVALID;
@@ -367,8 +364,10 @@ void put ( char msg [], char buffer [], int sock, struct sockaddr_in remote ) {
 void printRepo ( Repository *r ) {
   int i, j;
   int count = 0;
-  char header[ MAXLINE ];
+  char header[ MAXBUFSIZE ];
   if ( r->total < 1 ) return;
+
+  printf( "> Printing table\n" );
 
   sprintf( header, "| %*s | %*s | %*s | %*s | %*s |", 
 		   r->max.fname, "File Name",
@@ -376,6 +375,7 @@ void printRepo ( Repository *r ) {
 		   r->max.cname, "File Owner", 
 		   r->max.addr,  "Owner IP",
 		   r->max.port,  "Owner Port" );
+
   { ////////////////////////////////////////
 	printf( "+" );
 
@@ -513,7 +513,6 @@ int registerClient( Repository *r, int sock ) {
 
   maxPrint( r );
   printRepo( r );
-  //  getList( r, sock );
   
   nbytes = write( sock, "SUCCESS", MAXBUFSIZE );
   ERROR( nbytes < 0 );	    
